@@ -14,11 +14,10 @@ CSV enrichment platform: upload a list, map its columns, and enrich the rows wit
 
 ```bash
 cp .env.example .env          # fill in POSTGRES_PASSWORD, OPENAI_API_KEY, SITE_ORIGIN, …
-docker run --rm httpd:2.4-alpine htpasswd -nbB tester 'a-strong-password' > deploy/nginx/htpasswd
 docker compose up -d --build
 ```
 
-Then open `http://localhost:${HTTP_PORT}/`. Sign in with the Basic Auth login first, then sign up in the app.
+Then open `http://localhost:${HTTP_PORT}/`. Sign in with the Basic Auth login first, then sign up in the app. The login is the team's `tester` account in `deploy/nginx/htpasswd`; the file is committed and holds only a bcrypt hash. To add a tester, append a line made with `docker run --rm httpd:2.4-alpine htpasswd -nbB NAME PASSWORD`.
 
 ## Run for development (no Docker)
 

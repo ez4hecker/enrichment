@@ -80,7 +80,7 @@ Get the code into `/opt/enrichment`:
   git archive --format=tar.gz -o enrichment.tgz HEAD
   scp enrichment.tgz root@VPS_IP:/tmp/
   ```
-  `git archive` packs only committed files, so `.env` and the htpasswd file are never included. Then, on the VPS:
+  `git archive` packs only committed files, so `.env` is never included. The htpasswd file is committed, so it is included. Then, on the VPS:
   ```bash
   mkdir -p /opt/enrichment && tar -xzf /tmp/enrichment.tgz -C /opt/enrichment
   ```
@@ -136,20 +136,18 @@ grep -E '^(POSTGRES_PASSWORD|RESEARCH_KEY_ENCRYPTION_SECRET|SITE_ORIGIN|OPENAI_A
 
 ## 4. Tester logins (Basic Auth)
 
-**ASK** the user for usernames. Generate a password for each and give the logins to the user.
+The repo already ships `deploy/nginx/htpasswd` with the team's login (user `tester`; the user has the password). It holds only a bcrypt hash. **Use it as is.** Don't regenerate it or replace it unless the user asks.
+
+**Check:** `ls -l deploy/nginx/htpasswd` shows a regular file (not a directory) whose line starts with `tester:`. If it's missing, ASK the user rather than creating new logins. Docker would otherwise create a *directory* in its place, and nginx would fail.
+
+To add more testers later, append a line per tester and give the user each new password:
 
 ```bash
-cd /opt/enrichment
-: > deploy/nginx/htpasswd                                   # must exist as a FILE before `up`
-for USER in alice bob; do                                   # the usernames the user gave
-  PASS=$(openssl rand -base64 12 | tr -d '/+=')
-  docker run --rm httpd:2.4-alpine htpasswd -nbB "$USER" "$PASS" >> deploy/nginx/htpasswd
-  echo "$USER  $PASS"                                       # hand these to the user
-done
-chmod 644 deploy/nginx/htpasswd
+docker run --rm httpd:2.4-alpine htpasswd -nbB NAME "$(openssl rand -base64 12 | tr -d '/+=')" >> deploy/nginx/htpasswd
+docker compose restart nginx
 ```
 
-**Check:** `wc -l deploy/nginx/htpasswd` equals the number of testers, and `ls -l deploy/nginx/htpasswd` shows a regular file, not a directory. If the file is missing when the stack starts, Docker creates a *directory* in its place and nginx fails. In that case, remove the directory and redo this step.
+`htpasswd -nbB` prints only the hash line, so generate the password into a variable first and show it to the user.
 
 ---
 
@@ -253,7 +251,7 @@ All commands run in `/opt/enrichment`.
 cd /opt/enrichment
 # git:      git pull
 # tarball:  user uploads a new enrichment.tgz, then:
-#           tar -xzf /tmp/enrichment.tgz -C /opt/enrichment    (.env and htpasswd are not in it, so they survive)
+#           tar -xzf /tmp/enrichment.tgz -C /opt/enrichment    (.env is not in it, so it survives)
 docker compose up -d --build
 docker compose ps -a        # same Check as step 5; migrate re-applies migrations (idempotent)
 docker image prune -f       # optional: free disk space from old images
@@ -269,7 +267,7 @@ docker image prune -f       # optional: free disk space from old images
 | `migrate` exits non-zero | SQL error, or the password doesn't match an existing `pgdata` volume | `docker compose logs migrate`. If the password was changed after first start, put the original back in `.env`. |
 | `backend` unhealthy or restarting; the log says `X must be configured` | A required variable is empty (`OPENAI_API_KEY` or `OPENAI_MODEL`) | Fill it in, then `docker compose up -d backend`. |
 | The log shows `relation … does not exist` | Migrations didn't run | Check `docker compose logs migrate`, then `docker compose up -d`. |
-| nginx exits: `htpasswd … is a directory` | The file was missing at first start | `docker compose stop nginx && rm -rf deploy/nginx/htpasswd`, redo step 4, then `docker compose up -d nginx`. |
+| nginx exits: `htpasswd … is a directory` | The file was missing at first start | `docker compose stop nginx && rm -rf deploy/nginx/htpasswd`, restore the file from git (`git checkout deploy/nginx/htpasswd`) or from the tarball, then `docker compose up -d nginx`. |
 | Browser shows 502 | The frontend isn't ready yet or crashed | `docker compose ps` and `docker compose logs frontend`. |
 | The page loads, but every action fails and `/api/...` returns 500 or 502 | The backend is down, or the frontend was built with the wrong `BACKEND_URL` | Check `docker compose logs backend`, then rebuild the frontend with `docker compose up -d --build frontend`. |
 | Logged in, but a reload goes back to login | `SESSION_COOKIE_SECURE=true` over HTTP | Set it to `false`, then `docker compose up -d backend`. |
