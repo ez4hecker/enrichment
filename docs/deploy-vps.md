@@ -279,10 +279,61 @@ docker image prune -f       # optional: free disk space from old images
 
 ---
 
-## Later, when a domain is added (not now)
+## Serving on a domain through an existing host nginx
 
-The simplest route is to swap the nginx service for Caddy, or add certbot to the host. Point DNS at the VPS first. Then:
-- Set `SESSION_COOKIE_SECURE=true` and `SITE_ORIGIN=https://DOMAIN`.
-- Run `docker compose up -d --build`.
-- Open port 443.
-- Decide with the user whether Basic Auth stays.
+Use this when the VPS already runs nginx on the host with the domain's TLS certificate, for example a certbot-managed `app.teamgrowthinfi.com`. The host nginx terminates HTTPS and forwards to the Docker nginx, which listens only on localhost and keeps Basic Auth.
+
+```
+Browser ─ https://DOMAIN ─► host nginx :443 (existing cert) ─► 127.0.0.1:8080 Docker nginx (Basic Auth) ─► frontend ─► backend
+```
+
+1. **Look first; change nothing yet.** Find the host server block for the domain and back up the whole nginx config:
+   ```bash
+   grep -rln "server_name[^;]*DOMAIN" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null
+   cp -a /etc/nginx /root/nginx-backup-$(date +%F-%H%M)
+   ```
+   Show the user the block's `listen`, `ssl_certificate` and `location` lines. Never print private-key contents. Also list whatever the old `proxy_pass` targets were: their ports, and the processes behind them (`ss -ltnp`). **Don't stop those processes**; ASK the user.
+
+2. **Bind the Docker stack to localhost.** In `/opt/enrichment/.env`:
+   ```
+   HTTP_BIND=127.0.0.1
+   HTTP_PORT=8080
+   SITE_ORIGIN=https://DOMAIN
+   SESSION_COOKIE_SECURE=true
+   ```
+   Then run `docker compose up -d --build`. `SITE_ORIGIN` is fixed into the frontend build, so the rebuild is required.
+
+   **Check:** `ss -ltnp | grep 8080` shows `127.0.0.1:8080` only, and `curl -sI http://127.0.0.1:8080/ | head -1` returns `401`.
+
+3. **Point the domain's HTTPS server block at the stack.** In that block (the one with `listen 443 ssl`), keep the `server_name`, `listen` and `ssl_*`/certbot lines exactly as they are. Replace its `location` blocks (and any `root`/`index` lines) with:
+   ```nginx
+       client_max_body_size 60m;
+
+       location / {
+           proxy_pass http://127.0.0.1:8080;
+           proxy_http_version 1.1;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto https;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection "upgrade";
+           proxy_read_timeout 300s;
+           proxy_send_timeout 300s;
+       }
+   ```
+   Don't touch the domain's port-80 block (the certbot redirect to HTTPS), or any other domain's block.
+
+   Then run `nginx -t && systemctl reload nginx`. Use **reload**, not restart or stop. If `nginx -t` fails, restore the file from the backup and tell the user.
+
+4. **Close the direct port.** Run `ufw delete allow 8080/tcp`; the stack is now reached only through the domain.
+
+5. **Check:**
+   - `curl -sI https://DOMAIN/ | head -1` returns `401`, which is Basic Auth from the Docker nginx.
+   - `http://DOMAIN/` still redirects to HTTPS.
+   - Every other domain the host nginx serves still answers as before.
+   - Run the section 7 acceptance test on `https://DOMAIN/`, including a reload to confirm the secure cookie sticks.
+
+6. **Certificate renewal** keeps working through certbot's timer, because the `ssl_*` lines were left untouched. Run `certbot renew --dry-run` to confirm.
+
+**To roll back:** restore the server block from `/root/nginx-backup-…`, run `nginx -t && systemctl reload nginx`, and set `HTTP_BIND=0.0.0.0` again if the IP-and-port setup is wanted.
