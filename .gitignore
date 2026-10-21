@@ -1,0 +1,15 @@
+node_modules/
+.env
+.env.*
+!.env.example
+deploy/nginx/htpasswd
+.claude/settings.local.json
+
+# backend
+backend/dist/
+backend/var/
+
+# frontend
+frontend/.next/
+frontend/out/
+frontend/tsconfig.tsbuildinfo

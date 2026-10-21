@@ -1,0 +1,115 @@
+# Whole stack for an internal test server. Only nginx publishes a port; everything else is
+# reachable only on the compose network (Docker port publishing bypasses ufw, so keep it that way).
+#
+#   cp .env.example .env    # then fill it in
+#   docker compose up -d --build
+
+name: enrichment
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: csv_app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: csv_enrichment
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U csv_app -d csv_enrichment"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # BullMQ needs its keys kept: never evict them.
+    command: ["redis-server", "--maxmemory-policy", "noeviction", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Applies backend/infra/postgres/migrations in order, then exits. They are idempotent,
+  # so this runs on every `up` and picks up new migrations.
+  migrate:
+    image: postgres:16-alpine
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: csv_app
+      PGDATABASE: csv_enrichment
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./backend/infra/postgres/migrations:/migrations:ro
+    entrypoint: ["sh", "-c", "set -e; for f in $$(ls /migrations/*.sql | sort); do echo \"applying $$f\"; psql -v ON_ERROR_STOP=1 -q -f \"$$f\"; done"]
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    env_file: .env
+    # These follow from the compose network and override anything in .env.
+    environment:
+      DATABASE_URL: postgresql://csv_app:${POSTGRES_PASSWORD}@postgres:5432/csv_enrichment
+      REDIS_URL: redis://redis:6379/0
+      OUTPUT_ARTIFACT_DIRECTORY: /data/artifacts
+      HOST: 0.0.0.0
+      PORT: "3000"
+    volumes:
+      - artifacts:/data/artifacts
+    healthcheck:
+      # 401 from /auth/session means the API is up (and the caller is just not logged in).
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/auth/session').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        BACKEND_URL: http://backend:3000
+        NEXT_PUBLIC_SITE_ORIGIN: ${SITE_ORIGIN:-}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      BACKEND_URL: http://backend:3000
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      frontend:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/nginx/htpasswd:/etc/nginx/htpasswd:ro
+
+volumes:
+  pgdata:
+  redisdata:
+  artifacts:

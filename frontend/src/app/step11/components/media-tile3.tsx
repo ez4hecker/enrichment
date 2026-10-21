@@ -1,0 +1,78 @@
+import type { MediaTile3Styles } from "../_styles";
+import { cn } from "../../../lib/utils";
+export type MediaTile3Data = {
+  ariarowindex: string;
+  text: string;
+  text2: string;
+  text3: string;
+  text4: string;
+  text5: string;
+  text6: string;
+  text7: string;
+  href: string;
+  label: string;
+  href2: string;
+  label2: string;
+};
+/** A media tile. */
+export default function MediaTile3({ d, styles }: { d: MediaTile3Data; styles: MediaTile3Styles }) {
+  return (
+    <div className={cn("w-607.5 h-11 border-b border-solid border-b-border block absolute text-muted-foreground whitespace-nowrap text-nowrap bg-surface", styles.className)} aria-rowindex={d.ariarowindex} aria-selected="false" role="row">
+      <div className="w-50 h-full border border-solid border-t-clr-4 border-r-border border-b-clr-4 border-l-clr-4 flex absolute top-0 px-[0.9375rem] items-center grow overflow-hidden leading-[2.4375rem]" aria-colindex="2" role="gridcell">
+        <span className="block leading-5">
+          {d.text}
+        </span>
+      </div>
+      <div className="w-50 h-full border border-solid border-t-clr-4 border-r-border border-b-clr-4 border-l-clr-4 flex absolute top-0 left-50 px-[0.9375rem] items-center grow overflow-hidden leading-[2.4375rem]" aria-colindex="3" role="gridcell">
+        <span className="block leading-5">
+          {d.text2}
+        </span>
+      </div>
+      <div className="w-50 h-full border border-solid border-t-clr-4 border-r-border border-b-clr-4 border-l-clr-4 flex absolute top-0 left-100 px-[0.9375rem] items-center grow overflow-hidden leading-[2.4375rem] max-md:hidden" aria-colindex="4" role="gridcell">
+        <span className="block leading-5 max-md:hidden">
+          {d.text3}
+        </span>
+      </div>
+      <div className="w-50 h-full border border-solid border-t-clr-4 border-r-border border-b-clr-4 border-l-clr-4 flex absolute top-0 left-150 px-[0.9375rem] items-center grow overflow-hidden leading-[2.4375rem] max-md:hidden" aria-colindex="5" role="gridcell">
+        <span className="block leading-5 max-md:hidden">
+          {d.text4}
+        </span>
+      </div>
+      <div className="w-50 h-full border border-solid border-t-clr-4 border-r-border border-b-clr-4 border-l-clr-4 flex absolute top-0 left-200 px-[0.9375rem] items-center grow overflow-hidden leading-[2.4375rem] max-lg:hidden" aria-colindex="6" role="gridcell">
+        <span className="block leading-5 max-lg:hidden">
+          {d.text5}
+        </span>
+      </div>
+      <div className="w-50 h-full border border-solid border-t-clr-4 border-r-border border-b-clr-4 border-l-clr-4 flex absolute top-0 left-250 px-[0.9375rem] items-center grow overflow-hidden leading-[2.4375rem] max-lg:hidden" aria-colindex="7" role="gridcell">
+        <span className="block leading-5 max-lg:hidden">
+          {d.text6}
+        </span>
+      </div>
+      <div className="w-50 h-full border border-solid border-t-clr-4 border-r-border border-b-clr-4 border-l-clr-4 flex absolute top-0 left-300 px-[0.9375rem] items-center grow overflow-hidden leading-[2.4375rem] max-lg:hidden" aria-colindex="8" role="gridcell">
+        <span className="block leading-5 max-lg:hidden">
+          {d.text7}
+        </span>
+      </div>
+      <div className="hidden 2xl:w-50 2xl:h-full 2xl:border 2xl:border-solid 2xl:border-t-clr-4 2xl:border-r-border 2xl:border-b-clr-4 2xl:border-l-clr-4 2xl:flex 2xl:absolute 2xl:top-0 2xl:left-350 2xl:px-[0.9375rem] 2xl:items-center 2xl:grow 2xl:overflow-hidden 2xl:leading-[2.4375rem]" aria-colindex="9" role="gridcell">
+        <a className="hidden 2xl:flex 2xl:items-center 2xl:gap-1 2xl:leading-5 2xl:cursor-pointer" href={d.href} rel="noreferrer" target="_blank">
+          <svg className="hidden 2xl:w-4 2xl:h-[1.0625rem] 2xl:block 2xl:shrink-0 2xl:overflow-hidden 2xl:align-middle" fill="none" height="17" viewBox="0 0 16 17" width="16" xmlns="http://www.w3.org/2000/svg">
+            <path fillRule="evenodd" clipRule="evenodd" d="M6.66667 1.53272L6.637 1.53272C5.88492 1.53271 5.27828 1.5327 4.78588 1.56999C4.2792 1.60836 3.83276 1.68934 3.41518 1.88406C2.61615 2.25666 1.97394 2.89886 1.60135 3.6979C1.40663 4.11548 1.32565 4.56192 1.28728 5.06859C1.24999 5.56099 1.24999 6.16763 1.25 6.91972L1.25 6.94938V8.28272L1.25 8.33759C1.24998 9.70518 1.24996 10.8075 1.36652 11.6745C1.48754 12.5746 1.74643 13.3324 2.34835 13.9344C2.95027 14.5363 3.70814 14.7952 4.60825 14.9162C5.47522 15.0328 6.57754 15.0327 7.94512 15.0327H7.94513H8H9.33333H9.363C10.1151 15.0327 10.7217 15.0327 11.2141 14.9954C11.7208 14.9571 12.1672 14.8761 12.5848 14.6814C13.3839 14.3088 14.0261 13.6666 14.3987 12.8675C14.5934 12.45 14.6744 12.0035 14.7127 11.4968C14.75 11.0044 14.75 10.3978 14.75 9.64571V9.61605C14.75 9.20184 14.4142 8.86605 14 8.86605C13.5858 8.86605 13.25 9.20184 13.25 9.61605C13.25 10.4047 13.2495 10.9545 13.217 11.3836C13.1851 11.8048 13.1256 12.0484 13.0392 12.2336C12.8156 12.713 12.4303 13.0984 11.9509 13.3219C11.7657 13.4083 11.5221 13.4678 11.1009 13.4997C10.6718 13.5322 10.122 13.5327 9.33333 13.5327H8C6.56459 13.5327 5.56347 13.5311 4.80812 13.4296C4.07435 13.3309 3.68577 13.1505 3.40901 12.8737C3.13225 12.5969 2.9518 12.2084 2.85315 11.4746C2.75159 10.7192 2.75 9.71813 2.75 8.28272V6.94938C2.75 6.1607 2.7505 5.61094 2.78299 5.18185C2.8149 4.76059 2.87445 4.51702 2.96081 4.33182C3.18437 3.8524 3.56969 3.46708 4.04911 3.24352C4.2343 3.15717 4.47787 3.09761 4.89914 3.06571C5.32822 3.03322 5.87799 3.03272 6.66667 3.03272C7.08088 3.03272 7.41667 2.69693 7.41667 2.28272C7.41667 1.8685 7.08088 1.53272 6.66667 1.53272ZM10 1.53272C9.58579 1.53272 9.25 1.8685 9.25 2.28272C9.25 2.69693 9.58579 3.03272 10 3.03272H12.1893L7.46967 7.75239C7.17678 8.04528 7.17678 8.52015 7.46967 8.81305C7.76256 9.10594 8.23744 9.10594 8.53033 8.81305L13.25 4.09338V6.28272C13.25 6.69693 13.5858 7.03272 14 7.03272C14.4142 7.03272 14.75 6.69693 14.75 6.28272V2.28272C14.75 1.8685 14.4142 1.53272 14 1.53272H10Z" fill="currentColor" />
+          </svg>
+          <span className="hidden 2xl:block 2xl:overflow-hidden">
+            {d.label}
+          </span>
+        </a>
+      </div>
+      <div className="hidden 2xl:w-50 2xl:h-full 2xl:border 2xl:border-solid 2xl:border-t-clr-4 2xl:border-r-border 2xl:border-b-clr-4 2xl:border-l-clr-4 2xl:flex 2xl:absolute 2xl:top-0 2xl:left-400 2xl:px-[0.9375rem] 2xl:items-center 2xl:grow 2xl:overflow-hidden 2xl:leading-[2.4375rem]" aria-colindex="10" role="gridcell">
+        <a className="hidden 2xl:flex 2xl:items-center 2xl:gap-1 2xl:leading-5 2xl:cursor-pointer" href={d.href2} rel="noreferrer" target="_blank">
+          <svg className="hidden 2xl:w-4 2xl:h-[1.0625rem] 2xl:block 2xl:shrink-0 2xl:overflow-hidden 2xl:align-middle" fill="none" height="17" viewBox="0 0 16 17" width="16" xmlns="http://www.w3.org/2000/svg">
+            <path fillRule="evenodd" clipRule="evenodd" d="M6.66667 1.53272L6.637 1.53272C5.88492 1.53271 5.27828 1.5327 4.78588 1.56999C4.2792 1.60836 3.83276 1.68934 3.41518 1.88406C2.61615 2.25666 1.97394 2.89886 1.60135 3.6979C1.40663 4.11548 1.32565 4.56192 1.28728 5.06859C1.24999 5.56099 1.24999 6.16763 1.25 6.91972L1.25 6.94938V8.28272L1.25 8.33759C1.24998 9.70518 1.24996 10.8075 1.36652 11.6745C1.48754 12.5746 1.74643 13.3324 2.34835 13.9344C2.95027 14.5363 3.70814 14.7952 4.60825 14.9162C5.47522 15.0328 6.57754 15.0327 7.94512 15.0327H7.94513H8H9.33333H9.363C10.1151 15.0327 10.7217 15.0327 11.2141 14.9954C11.7208 14.9571 12.1672 14.8761 12.5848 14.6814C13.3839 14.3088 14.0261 13.6666 14.3987 12.8675C14.5934 12.45 14.6744 12.0035 14.7127 11.4968C14.75 11.0044 14.75 10.3978 14.75 9.64571V9.61605C14.75 9.20184 14.4142 8.86605 14 8.86605C13.5858 8.86605 13.25 9.20184 13.25 9.61605C13.25 10.4047 13.2495 10.9545 13.217 11.3836C13.1851 11.8048 13.1256 12.0484 13.0392 12.2336C12.8156 12.713 12.4303 13.0984 11.9509 13.3219C11.7657 13.4083 11.5221 13.4678 11.1009 13.4997C10.6718 13.5322 10.122 13.5327 9.33333 13.5327H8C6.56459 13.5327 5.56347 13.5311 4.80812 13.4296C4.07435 13.3309 3.68577 13.1505 3.40901 12.8737C3.13225 12.5969 2.9518 12.2084 2.85315 11.4746C2.75159 10.7192 2.75 9.71813 2.75 8.28272V6.94938C2.75 6.1607 2.7505 5.61094 2.78299 5.18185C2.8149 4.76059 2.87445 4.51702 2.96081 4.33182C3.18437 3.8524 3.56969 3.46708 4.04911 3.24352C4.2343 3.15717 4.47787 3.09761 4.89914 3.06571C5.32822 3.03322 5.87799 3.03272 6.66667 3.03272C7.08088 3.03272 7.41667 2.69693 7.41667 2.28272C7.41667 1.8685 7.08088 1.53272 6.66667 1.53272ZM10 1.53272C9.58579 1.53272 9.25 1.8685 9.25 2.28272C9.25 2.69693 9.58579 3.03272 10 3.03272H12.1893L7.46967 7.75239C7.17678 8.04528 7.17678 8.52015 7.46967 8.81305C7.76256 9.10594 8.23744 9.10594 8.53033 8.81305L13.25 4.09338V6.28272C13.25 6.69693 13.5858 7.03272 14 7.03272C14.4142 7.03272 14.75 6.69693 14.75 6.28272V2.28272C14.75 1.8685 14.4142 1.53272 14 1.53272H10Z" fill="currentColor" />
+          </svg>
+          <span className="hidden 2xl:block 2xl:overflow-hidden">
+            {d.label2}
+          </span>
+        </a>
+      </div>
+    </div>
+  );
+}

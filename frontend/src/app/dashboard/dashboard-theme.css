@@ -1,0 +1,126 @@
+/*
+ * Dashboard dark mode.
+ *
+ * Dashboard pages use Tailwind's palette classes (bg-white, text-gray-900, border-gray-200,
+ * bg-violet-50, ...). In Tailwind 4 each of those reads a CSS variable, so dark mode redefines
+ * the variables for the dashboard instead of adding dark: variants to every element. Every
+ * page and every new component follows automatically, and contrast stays the same as in
+ * light mode because each shade swaps with its mirror:
+ *   - neutrals invert (white is the darkest surface, gray-900 the brightest text);
+ *   - black/white swap, so primary "bg-black text-white" buttons become light buttons with
+ *     dark text, which keeps them the highest-contrast element on the page;
+ *   - tinted fills (-50/-100) become deep translucent tints and tinted text (-700/-900)
+ *     becomes a light tint, so badges, notices and errors stay readable.
+ *
+ * The landing page is outside [data-dashboard] and is never affected.
+ */
+
+html[data-theme="dark"] [data-dashboard] {
+  color-scheme: dark;
+
+  /* Design tokens used by the sidebar and some pages. */
+  --background: oklch(0.165 0.006 270);
+  --foreground: oklch(0.96 0.003 270);
+  --border: oklch(0.29 0.008 270);
+  --muted-foreground: oklch(0.68 0.01 270);
+  --muted: oklch(0.25 0.008 270);
+  --surface-2: oklch(0.165 0.006 270);
+
+  /* Neutrals, mirrored. */
+  --color-white: oklch(0.195 0.007 270);
+  --color-black: oklch(0.97 0.002 270);
+  --color-gray-50: oklch(0.225 0.008 270);
+  --color-gray-100: oklch(0.255 0.008 270);
+  --color-gray-200: oklch(0.3 0.009 270);
+  --color-gray-300: oklch(0.38 0.01 270);
+  --color-gray-400: oklch(0.56 0.012 270);
+  --color-gray-500: oklch(0.68 0.012 270);
+  --color-gray-600: oklch(0.76 0.01 270);
+  --color-gray-700: oklch(0.84 0.008 270);
+  --color-gray-800: oklch(0.91 0.005 270);
+  --color-gray-900: oklch(0.95 0.004 270);
+
+  /* Violet: selection, preview, model cards. */
+  --color-violet-50: oklch(0.27 0.06 293);
+  --color-violet-100: oklch(0.32 0.085 293);
+  --color-violet-200: oklch(0.38 0.11 293);
+  --color-violet-300: oklch(0.46 0.14 293);
+  --color-violet-400: oklch(0.58 0.17 293);
+  --color-violet-600: oklch(0.72 0.15 293);
+  --color-violet-700: oklch(0.8 0.11 293);
+  --color-violet-800: oklch(0.86 0.08 293);
+  --color-violet-950: oklch(0.94 0.035 293);
+
+  /* Emerald: answers, success. */
+  --color-emerald-50: oklch(0.26 0.045 165);
+  --color-emerald-100: oklch(0.33 0.065 165);
+  --color-emerald-700: oklch(0.82 0.12 165);
+  --color-emerald-900: oklch(0.9 0.07 165);
+
+  /* Red: errors, remove. */
+  --color-red-50: oklch(0.27 0.06 25);
+  --color-red-100: oklch(0.34 0.085 25);
+  --color-red-500: oklch(0.71 0.17 25);
+  --color-red-600: oklch(0.74 0.16 25);
+  --color-red-800: oklch(0.86 0.09 25);
+
+  /* Amber: cost and risk warnings. */
+  --color-amber-50: oklch(0.27 0.05 75);
+  --color-amber-100: oklch(0.35 0.075 75);
+  --color-amber-700: oklch(0.84 0.13 80);
+  --color-amber-800: oklch(0.88 0.1 80);
+
+  /* Job status badges. */
+  --color-green-100: oklch(0.31 0.06 150);
+  --color-green-600: oklch(0.76 0.15 150);
+  --color-green-800: oklch(0.86 0.1 150);
+  --color-blue-100: oklch(0.31 0.07 255);
+  --color-blue-500: oklch(0.7 0.14 255);
+  --color-blue-800: oklch(0.86 0.08 255);
+}
+
+/* A black-tinted glow under the primary button would turn white once black is remapped. */
+html[data-theme="dark"] [data-dashboard] .shadow-black\/10 {
+  --tw-shadow-color: oklch(0 0 0 / 0.4);
+}
+
+/* The logo is black on transparent. */
+html[data-theme="dark"] [data-dashboard] img[alt="GrowthInfi"] {
+  filter: invert(1);
+}
+
+/* Native confirm/selects/scrollbars follow color-scheme above; this gives the
+   scroll area a matching thumb in browsers that support it. */
+html[data-theme="dark"] [data-dashboard] * {
+  scrollbar-color: oklch(0.38 0.01 270) transparent;
+}
+
+/*
+ * The switch fades colors instead of snapping. The transition is added only while switching
+ * (the theme toggle sets data-theme-switching for a moment), so it never slows hovers or
+ * other interactions the rest of the time.
+ */
+html[data-theme-switching] [data-dashboard],
+html[data-theme-switching] [data-dashboard] * {
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    color 220ms ease,
+    fill 220ms ease,
+    stroke 220ms ease,
+    box-shadow 220ms ease,
+    filter 220ms ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme-switching] [data-dashboard],
+  html[data-theme-switching] [data-dashboard] * {
+    transition: none !important;
+  }
+}
+
+/* The green welcome banner keeps its colour but is toned down so it doesn't glare on a dark
+   page. An inset shadow darkens only the background; the heading on top stays pure white. */
+html[data-theme="dark"] [data-dashboard] [data-dashboard-banner] {
+  box-shadow: inset 0 0 0 100vmax oklch(0 0 0 / 0.24);
+}

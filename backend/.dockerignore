@@ -1,0 +1,9 @@
+node_modules
+dist
+var
+.env
+.env.*
+!.env.example
+tests
+docs
+*.md

@@ -1,0 +1,51 @@
+Requirements Gathered
+
+File: requirements_2026-09-11T13-38-39-794Z.md
+
+### **Requirements Summary**
+
+The system is an internal platform for enriching CSV contact lists. The core workflow is asynchronous, designed to handle large files without locking up the user's browser or incurring API rate limit errors.
+
+**Core Workflow:**
+1.  **Upload & Mapping**: The user uploads a CSV. The system rejects files with inconsistent column counts and ignores empty rows. The user is then prompted to map their columns to standard data types (e.g., "Company Name," "First Name").
+2.  **Enrichment Configuration**: For each mapped column, the user can add one or more enrichment operations. They can choose from a predefined list of Standard Operations or from a library of saved Custom Operations.
+3.  **Job Execution**: The user starts the job, which is sent to a background processing queue (e.g., BullMQ with parallel workers). The user is redirected to a "Job History" page where they can see the job's status (`Queued`, `In Progress`, `Completed`, `Failed`). They can close their browser, and the job will continue.
+4.  **Download**: Upon completion, a "Download" link appears on the Job History page. The resulting file will be the original CSV with new columns appended for each enrichment performed. The filename will have `_enriched` added to the end.
+
+**Enrichment Operations:**
+*   **Standard Operations**: A set of predefined, rule-based transformations.
+    *   `Clean Company Name`: Removes common legal suffixes.
+    *   `Clean First Name`: Removes prefixes and middle initials.
+    *   `Format Website`: Ensures URL starts with `https://`.
+    *   `Extract Domain from Email`: Gets the domain part of an email.
+    *   `Capitalize Job Titles`: Applies title case and handles acronyms.
+*   **Custom Operations**: User-defined prompts run via the OpenAI API.
+    *   Each Custom Operation consists of a Name, a Prompt Template, and an Expected Output Type (`Text`, `Number`, `Boolean`).
+    *   Prompts can reference data from other columns using `{Column Name}` variables. A UI will help users insert these variables to prevent errors.
+    *   These operations are saved in a library where they can be edited and deleted for reuse across different jobs.
+
+**Error & Data Handling:**
+*   **Output Format**: Each operation adds a new column to the CSV (e.g., `company_name_cleaned`). This is non-destructive.
+*   **Row-Level Failures**: If an operation fails on a specific row, a placeholder is used in the new cell, and a description of the error is added to a final `processing_errors` column.
+*   **Placeholders**:
+    *   `[Not Found]` for failed Text or Number operations.
+    *   `[Uncertain]` for failed Boolean operations.
+
+### **CONTEXT.md**
+
+| Term | Definition | Aliases |
+| :--- | :--- | :--- |
+| **Enrichment Job** | The entire process of uploading a CSV, applying a set of operations to it, and generating an output file. | Job, Run |
+| **Standard Operation** | A predefined, rule-based enrichment that does not use an external AI service. | Pre-defined Enrichment |
+| **Custom Operation** | A user-defined enrichment that uses a prompt template and the OpenAI API to generate data for each row. | Custom Enrichment, Custom Prompt |
+| **Job History** | A user interface page that lists all past and current Enrichment Jobs, showing their status and providing a download link for completed jobs. | Dashboard |
+| **Column Mapping** | The step where the user tells the system which columns in their uploaded CSV correspond to canonical data types like 'Company Name' or 'First Name'. | |
+| **Prompt Template** | The text of a Custom Operation, which includes placeholders like `{Column Name}` that are filled in with data from each row before being sent to the AI. | Prompt |
+| **Placeholder** | A specific value (e.g., `[Not Found]`, `[Uncertain]`) inserted into an output cell when an enrichment operation fails for that row. | Fallback, Generic Value |
+
+### **Architectural Decision Records (ADRs)**
+
+**ADR-001: Asynchronous Job Processing**
+*   **Context**: Enrichment jobs, especially those with thousands of rows using Custom Operations (LLM calls), can take several minutes to complete. A synchronous, in-browser process would be brittle, prone to timeouts, and provide a poor user experience.
+*   **Decision**: We will process all Enrichment Jobs asynchronously. The user will submit their configured job, which will be placed into a background queue (e.g., BullMQ). The user will be redirected to a Job History page to monitor progress and can safely close their browser.
+*   **Consequences**: This requires a more complex backend architecture with workers and a job queue. It also necessitates the Job History page for users to retrieve their results. However, it creates a robust and scalable system that can handle large files and long processing times gracefully.
