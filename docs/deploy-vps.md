@@ -273,7 +273,7 @@ docker image prune -f       # optional: free disk space from old images
 | Logged in, but a reload goes back to login | `SESSION_COOKIE_SECURE=true` over HTTP | Set it to `false`, then `docker compose up -d backend`. |
 | Upload fails with 413 | nginx body limit | Raise `client_max_body_size` in `deploy/nginx/default.conf`, then `docker compose restart nginx`. The backend's own limit is 50 MB. |
 | The frontend build is killed | Out of memory | Add swap (step 2) and rebuild. |
-| Port 80 already in use | A host nginx or apache is running | `systemctl disable --now nginx apache2`, or set `HTTP_PORT` to another port. |
+| Port 80 already in use | A host nginx or apache is running, often serving other live sites | **Never stop, disable or edit it.** Set `HTTP_PORT=8080` and `SITE_ORIGIN=http://VPS_IP:8080`, run `docker compose up -d --build`, and allow 8080 in the provider firewall. |
 | Lead Lookup says "Lead lookup is not configured" | `LEADOCEAN_API_KEY` is empty | Set it, then `docker compose up -d backend`. |
 | LeadOcean 429s in the backend log | Too many requests in flight | Lower `LEADOCEAN_MAXIMUM_CONCURRENT_REQUESTS`. |
 
