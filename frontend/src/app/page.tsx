@@ -1,8 +1,7 @@
 "use client";
 import Illustration from "./svgs/svg-illustration";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 const ERROR_MESSAGES: Record<string, string> = {
   INVALID_CREDENTIALS: "That email and password don't match.",
@@ -24,12 +23,6 @@ export default function Page() {
   const [error, setError] = useState("");
   const [isRegister, setIsRegister] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const router = useRouter();
-
-  // Load the dashboard's code while the user types, so signing in navigates at once.
-  useEffect(() => {
-    router.prefetch(destination());
-  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,8 +37,10 @@ export default function Page() {
         body: JSON.stringify({ email, password }),
       });
       if (res.ok) {
+        // A full page load, not router.push: the router may hold a pre-login redirect for the
+        // dashboard (from the middleware), which would land back here with the spinner stuck.
         // The spinner stays until the dashboard replaces this page.
-        router.push(destination());
+        window.location.assign(destination());
         return;
       }
       const data = await res.json().catch(() => ({}));

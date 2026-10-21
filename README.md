@@ -17,7 +17,7 @@ cp .env.example .env          # fill in POSTGRES_PASSWORD, OPENAI_API_KEY, SITE_
 docker compose up -d --build
 ```
 
-Then open `http://localhost:${HTTP_PORT}/`. Sign in with the Basic Auth login first, then sign up in the app. The login is the team's `tester` account in `deploy/nginx/htpasswd`; the file is committed and holds only a bcrypt hash. To add a tester, append a line made with `docker run --rm httpd:2.4-alpine htpasswd -nbB NAME PASSWORD`.
+Then open `http://localhost:${HTTP_PORT}/` and sign up in the app.
 
 ## Run for development (no Docker)
 

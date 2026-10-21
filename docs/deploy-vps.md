@@ -10,9 +10,9 @@ Read the whole guide first, then work through the steps in order. Each step ends
 
 ## 0. Rules for the agent
 
-1. **Secrets.** Never print, `cat`, echo or log API keys, the Postgres password or `RESEARCH_KEY_ENCRYPTION_SECRET`, and never paste them into chat. Write them into `.env` and confirm only "set" or "empty". The **only** credentials you may show the user are the Basic Auth logins you create for testers (step 4).
+1. **Secrets.** Never print, `cat`, echo or log API keys, the Postgres password or `RESEARCH_KEY_ENCRYPTION_SECRET`, and never paste them into chat. Write them into `.env` and confirm only "set" or "empty".
 2. **ASK** the user whenever this guide says ASK. Don't invent values.
-3. **The app has open sign-up.** Anyone who reaches it can create an account and spend the OpenAI, LeadOcean and Serper credits. nginx Basic Auth (step 4) is therefore mandatory. Only nginx may publish a port: never add `ports:` to postgres, redis, backend or frontend.
+3. **The app has open sign-up and no extra login in front of it.** Anyone who reaches it can create an account and spend the OpenAI, LeadOcean and Serper credits; the user has accepted this for internal testing. Only nginx may publish a port: never add `ports:` to postgres, redis, backend or frontend.
 4. **Docker bypasses ufw.** Ports that Docker publishes ignore ufw rules. That's why only nginx publishes a port. If port 80 must be limited to team IPs, use the VPS provider's firewall (see step 6).
 5. If a command fails, read the error, fix the cause and re-run. Never skip a failed Check.
 
@@ -27,7 +27,6 @@ Read the whole guide first, then work through the steps in order. Each step ends
 | `LEADOCEAN_API_KEY` | `.env` | Optional. Without it, Lead Lookup rows get `[Not Found]`. |
 | `SERPER_API_KEY` | `.env` | Optional. It enables paid web search for AI Research. |
 | `GEMINI_BILLED_API_KEY` | `.env` | Optional. |
-| Tester usernames | step 4 | One login per tester, or one shared login. |
 | Team IPs (optional) | provider firewall | Only if port 80 should be limited to the team. |
 
 ---
@@ -35,7 +34,7 @@ Read the whole guide first, then work through the steps in order. Each step ends
 ## 1. What runs
 
 ```
-Browser ── http://VPS_IP/ (Basic Auth)
+Browser ── http://VPS_IP/
              │
         ┌────▼────┐  the only published port (HTTP_PORT, default 80)
         │  nginx  │
@@ -80,7 +79,7 @@ Get the code into `/opt/enrichment`:
   git archive --format=tar.gz -o enrichment.tgz HEAD
   scp enrichment.tgz root@VPS_IP:/tmp/
   ```
-  `git archive` packs only committed files, so `.env` is never included. The htpasswd file is committed, so it is included. Then, on the VPS:
+  `git archive` packs only committed files, so `.env` is never included. Then, on the VPS:
   ```bash
   mkdir -p /opt/enrichment && tar -xzf /tmp/enrichment.tgz -C /opt/enrichment
   ```
@@ -134,20 +133,9 @@ grep -E '^(POSTGRES_PASSWORD|RESEARCH_KEY_ENCRYPTION_SECRET|SITE_ORIGIN|OPENAI_A
 
 ---
 
-## 4. Tester logins (Basic Auth)
+## 4. Access
 
-The repo already ships `deploy/nginx/htpasswd` with the team's login (user `tester`; the user has the password). It holds only a bcrypt hash. **Use it as is.** Don't regenerate it or replace it unless the user asks.
-
-**Check:** `ls -l deploy/nginx/htpasswd` shows a regular file (not a directory) whose line starts with `tester:`. If it's missing, ASK the user rather than creating new logins. Docker would otherwise create a *directory* in its place, and nginx would fail.
-
-To add more testers later, append a line per tester and give the user each new password:
-
-```bash
-docker run --rm httpd:2.4-alpine htpasswd -nbB NAME "$(openssl rand -base64 12 | tr -d '/+=')" >> deploy/nginx/htpasswd
-docker compose restart nginx
-```
-
-`htpasswd -nbB` prints only the hash line, so generate the password into a variable first and show it to the user.
+There's no nginx login: testers go straight to the app's own sign-up page. Nothing to do in this step.
 
 ---
 
@@ -173,9 +161,8 @@ docker compose ps -a
 Then, on the VPS:
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1/                                   # 401 (Basic Auth)
-curl -s -o /dev/null -w '%{http_code}\n' -u 'alice:PASSWORD' http://127.0.0.1/               # 200
-curl -s -o /dev/null -w '%{http_code}\n' -u 'alice:PASSWORD' http://127.0.0.1/api/auth/session   # 401 = frontend→backend proxy works
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1/                                   # 200 (login page)
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1/api/auth/session   # 401 = frontend→backend proxy works
 docker compose exec postgres psql -U csv_app -d csv_enrichment -c '\dt'                     # 8 tables
 ```
 
@@ -206,7 +193,7 @@ Because of rule 4, ufw doesn't filter port 80 here; Docker opens it itself. ufw 
 
 In a browser, or have the user do it:
 
-1. Open `http://VPS_IP/` and pass Basic Auth. The app's login page appears.
+1. Open `http://VPS_IP/`. The app's login page appears.
 2. Sign up with an email and a password of 12 or more characters. The dashboard opens.
 3. Reload the page. You're still logged in. If you're sent back to login, see Troubleshooting.
 4. **New Job:** upload a small CSV (2–5 rows: first name, last name, company or website), map the columns and continue.
@@ -220,7 +207,7 @@ In a browser, or have the user do it:
 ## 8. Report back to the user
 
 Include:
-- The URL and the tester logins you created.
+- The URL.
 - Which optional integrations are on: LeadOcean, Serper, Gemini billed.
 - The result of every step in section 7.
 - That `/opt/enrichment/.env` holds the generated Postgres password and encryption secret, and must be kept. Losing `RESEARCH_KEY_ENCRYPTION_SECRET` makes stored Gemini keys unreadable.
@@ -239,8 +226,6 @@ All commands run in `/opt/enrichment`.
 | Restart one service | `docker compose restart backend` |
 | Change a backend setting | Edit `.env`, then `docker compose up -d backend`. This recreates the container with the new env; no rebuild needed. |
 | Change `SITE_ORIGIN` | Edit `.env`, then `docker compose up -d --build frontend` (it's baked into the build). |
-| Add a tester | Append a line with `docker run --rm httpd:2.4-alpine htpasswd -nbB NAME PASS >> deploy/nginx/htpasswd`, then `docker compose restart nginx` |
-| Remove a tester | Delete their line from `deploy/nginx/htpasswd`, then `docker compose restart nginx` |
 | Stop everything (data kept) | `docker compose down` |
 | Database shell | `docker compose exec postgres psql -U csv_app -d csv_enrichment` |
 | Back up the database | `docker compose exec -T postgres pg_dump -U csv_app csv_enrichment > backup-$(date +%F).sql` |
@@ -267,7 +252,6 @@ docker image prune -f       # optional: free disk space from old images
 | `migrate` exits non-zero | SQL error, or the password doesn't match an existing `pgdata` volume | `docker compose logs migrate`. If the password was changed after first start, put the original back in `.env`. |
 | `backend` unhealthy or restarting; the log says `X must be configured` | A required variable is empty (`OPENAI_API_KEY` or `OPENAI_MODEL`) | Fill it in, then `docker compose up -d backend`. |
 | The log shows `relation … does not exist` | Migrations didn't run | Check `docker compose logs migrate`, then `docker compose up -d`. |
-| nginx exits: `htpasswd … is a directory` | The file was missing at first start | `docker compose stop nginx && rm -rf deploy/nginx/htpasswd`, restore the file from git (`git checkout deploy/nginx/htpasswd`) or from the tarball, then `docker compose up -d nginx`. |
 | Browser shows 502 | The frontend isn't ready yet or crashed | `docker compose ps` and `docker compose logs frontend`. |
 | The page loads, but every action fails and `/api/...` returns 500 or 502 | The backend is down, or the frontend was built with the wrong `BACKEND_URL` | Check `docker compose logs backend`, then rebuild the frontend with `docker compose up -d --build frontend`. |
 | Logged in, but a reload goes back to login | `SESSION_COOKIE_SECURE=true` over HTTP | Set it to `false`, then `docker compose up -d backend`. |
@@ -281,10 +265,10 @@ docker image prune -f       # optional: free disk space from old images
 
 ## Serving on a domain through an existing host nginx
 
-Use this when the VPS already runs nginx on the host with the domain's TLS certificate, for example a certbot-managed `app.teamgrowthinfi.com`. The host nginx terminates HTTPS and forwards to the Docker nginx, which listens only on localhost and keeps Basic Auth.
+Use this when the VPS already runs nginx on the host with the domain's TLS certificate, for example a certbot-managed `app.teamgrowthinfi.com`. The host nginx terminates HTTPS and forwards to the Docker nginx, which listens only on localhost.
 
 ```
-Browser ─ https://DOMAIN ─► host nginx :443 (existing cert) ─► 127.0.0.1:8080 Docker nginx (Basic Auth) ─► frontend ─► backend
+Browser ─ https://DOMAIN ─► host nginx :443 (existing cert) ─► 127.0.0.1:8080 Docker nginx ─► frontend ─► backend
 ```
 
 1. **Look first; change nothing yet.** Find the host server block for the domain and back up the whole nginx config:
@@ -303,7 +287,7 @@ Browser ─ https://DOMAIN ─► host nginx :443 (existing cert) ─► 127.0.0
    ```
    Then run `docker compose up -d --build`. `SITE_ORIGIN` is fixed into the frontend build, so the rebuild is required.
 
-   **Check:** `ss -ltnp | grep 8080` shows `127.0.0.1:8080` only, and `curl -sI http://127.0.0.1:8080/ | head -1` returns `401`.
+   **Check:** `ss -ltnp | grep 8080` shows `127.0.0.1:8080` only, and `curl -sI http://127.0.0.1:8080/ | head -1` returns `200`.
 
 3. **Point the domain's HTTPS server block at the stack.** In that block (the one with `listen 443 ssl`), keep the `server_name`, `listen` and `ssl_*`/certbot lines exactly as they are. Replace its `location` blocks (and any `root`/`index` lines) with:
    ```nginx
@@ -329,7 +313,7 @@ Browser ─ https://DOMAIN ─► host nginx :443 (existing cert) ─► 127.0.0
 4. **Close the direct port.** Run `ufw delete allow 8080/tcp`; the stack is now reached only through the domain.
 
 5. **Check:**
-   - `curl -sI https://DOMAIN/ | head -1` returns `401`, which is Basic Auth from the Docker nginx.
+   - `curl -sI https://DOMAIN/ | head -1` returns `200` (the app's login page).
    - `http://DOMAIN/` still redirects to HTTPS.
    - Every other domain the host nginx serves still answers as before.
    - Run the section 7 acceptance test on `https://DOMAIN/`, including a reload to confirm the secure cookie sticks.
