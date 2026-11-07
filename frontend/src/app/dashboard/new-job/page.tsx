@@ -177,6 +177,27 @@ const ROWS_PER_PAGE = 100;
 // The backend previews at most this many rows; more selected rows run as a job.
 const MAX_PREVIEW_ROWS = 10;
 
+// Reads a print-dialog style row list such as "1-10, 7, 30, 31-39" (1-based, inclusive ranges)
+// into sorted 0-based row indexes. Returns an error message instead when a part cannot be read.
+function parseRowRanges(text: string, rowCount: number): { rows: number[] } | { error: string } {
+  const rows = new Set<number>();
+  const parts = text.split(/[,;]/).map(part => part.trim()).filter(part => part !== "");
+  if (parts.length === 0) return { error: "Type rows like 1-10, 15, 30-39." };
+  for (const part of parts) {
+    const match = /^(\d+)\s*(?:[-–]\s*(\d+))?$/.exec(part);
+    if (!match) return { error: `"${part}" is not a row number or range like 31-39.` };
+    const first = Number(match[1]);
+    const last = match[2] === undefined ? first : Number(match[2]);
+    if (first < 1 || last < 1) return { error: "Rows start at 1." };
+    if (first > last) return { error: `"${part}" goes backwards; write it as ${last}-${first}.` };
+    if (last > rowCount) return { error: `The file has ${rowCount.toLocaleString()} rows; "${part}" goes past the end.` };
+    for (let row = first; row <= last; row += 1) rows.add(row - 1);
+  }
+  return { rows: [...rows].sort((a, b) => a - b) };
+}
+
+const CUSTOM_ROWS = -1;
+
 function formatDollars(amount: number) {
   if (amount === 0) return "$0";
   if (amount < 0.01) return "<$0.01";
@@ -528,10 +549,24 @@ export default function NewJobPage() {
   // Quick select: ticks N rows in table order, starting at the first ticked row (or the first row).
   // Shown only while the selection is still exactly that quick pick; ticking rows by hand clears it.
   const [quickRows, setQuickRows] = useState(0);
-  const quickRowsShown = quickRows > 0 && selected.size === quickRows ? quickRows : 0;
+  const quickRowsShown = quickRows === CUSTOM_ROWS ? CUSTOM_ROWS : quickRows > 0 && selected.size === quickRows ? quickRows : 0;
+  const [customRowsText, setCustomRowsText] = useState("");
+  const [customRowsError, setCustomRowsError] = useState("");
+  const applyCustomRows = () => {
+    const parsed = parseRowRanges(customRowsText, allData.length);
+    if ("error" in parsed) {
+      setCustomRowsError(parsed.error);
+      return;
+    }
+    setCustomRowsError("");
+    setRowFilter("");
+    changeSelection(new Set(parsed.rows));
+    setTablePage(Math.floor(parsed.rows[0] / ROWS_PER_PAGE));
+  };
   const quickSelectRows = (count: number) => {
     setQuickRows(count);
-    if (count === 0) return;
+    setCustomRowsError("");
+    if (count <= 0) return;
     const firstTicked = selectedIndexes[0] ?? filteredIndexes[0] ?? 0;
     const startAt = filteredIndexes.findIndex(index => index >= firstTicked);
     const picked = filteredIndexes.slice(Math.max(0, startAt), Math.max(0, startAt) + count);
@@ -1364,10 +1399,42 @@ export default function NewJobPage() {
                         {[5, 10, 20].map(count => (
                           <option key={count} value={count}>{count} rows{selectedIndexes.length > 0 ? ` from row ${selectedIndexes[0] + 1}` : ""}</option>
                         ))}
+                        <option value={CUSTOM_ROWS}>Custom rows…</option>
                       </select>
-                      <div className="text-xs text-gray-500">
-                        Picks that many rows in table order, starting at the first ticked row. Preview takes up to {MAX_PREVIEW_ROWS}; Start Processing runs any number.
-                      </div>
+                      {quickRowsShown === CUSTOM_ROWS ? (
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={customRowsText}
+                              onChange={e => { setCustomRowsText(e.target.value); setCustomRowsError(""); }}
+                              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); applyCustomRows(); } }}
+                              aria-label="Custom rows"
+                              placeholder="e.g. 1-10, 15, 30-39"
+                              className="flex-1 bg-white border border-gray-200 rounded-xl py-2 px-3 outline-none focus:border-black focus:ring-1 focus:ring-black font-medium text-gray-900"
+                            />
+                            <button
+                              type="button"
+                              onClick={applyCustomRows}
+                              className="bg-black hover:bg-gray-800 text-white rounded-xl px-4 text-sm font-semibold transition-colors"
+                            >
+                              Select rows
+                            </button>
+                          </div>
+                          {customRowsError ? (
+                            <div className="text-xs text-red-600">{customRowsError}</div>
+                          ) : (
+                            <div className="text-xs text-gray-500">
+                              Row numbers as in the table, like a print dialog: ranges with a dash, separated by commas.
+                              {selected.size > 0 && <> <span className="font-semibold text-gray-700">{selected.size.toLocaleString()} rows selected.</span></>}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-500">
+                          Picks that many rows in table order, starting at the first ticked row. Preview takes up to {MAX_PREVIEW_ROWS}; Start Processing runs any number.
+                        </div>
+                      )}
                       {isWriting && (
                         <>
                           <div className="flex flex-wrap gap-1.5">
