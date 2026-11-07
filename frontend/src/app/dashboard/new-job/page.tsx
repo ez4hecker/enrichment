@@ -233,6 +233,12 @@ export default function NewJobPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // The Processing Options error box sits above a scrolling panel, so an error raised by a button further
+  // down (Add Operation, Start Processing) can be out of view. Bring it into view whenever it changes.
+  const optionsErrorRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (error) optionsErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [error]);
   const router = useRouter();
 
   // The dashboard scrolls inside <main>, not the window, so each step would otherwise keep the previous scroll position.
@@ -425,8 +431,11 @@ export default function NewJobPage() {
     if (!question.trim()) return "Please type what to write for each row.";
     const columns = promptColumns(question);
     if (columns.length === 0) return "Insert at least one column, such as {First Name}, so each row gets its own text.";
-    const unknown = columns.find(column => !headers.includes(column));
-    if (unknown) return `{${unknown}} is not a column in this file.`;
+    const unknown = columns.filter(column => !headers.includes(column));
+    if (unknown.length > 0) {
+      return `${unknown.map(column => `{${column}}`).join(", ")} ${unknown.length === 1 ? "is not a column" : "are not columns"} in this file. `
+        + "Use the column buttons below the box to insert names that exist, or add these columns to the CSV.";
+    }
     if (!writingModel) return "Choose a model.";
     return "";
   };
@@ -729,8 +738,16 @@ export default function NewJobPage() {
 
     const finalMappings = columnMappings();
 
-    if (finalMappings.length === 0 && operations.length === 0) {
-      setError("Please map at least one column or configure at least one operation to create a job.");
+    // A job without operations generates nothing; it would "complete" at once with 0/0 progress.
+    if (operations.length === 0) {
+      const pending = question.trim()
+        ? opKind === AI_WRITING
+          ? writingProblem() || (opOutput.trim() ? "" : "Please name the generated column.")
+          : ""
+        : "";
+      setError(question.trim()
+        ? `Your instruction has not been added to the job yet. ${pending ? `${pending} Then click` : "Click"} Add Operation, then Start Processing.`
+        : "Add at least one operation before starting the job.");
       setLoading(false);
       return;
     }
@@ -1002,7 +1019,7 @@ export default function NewJobPage() {
              <div className="w-[340px] bg-white border border-gray-200 rounded-2xl p-6 flex flex-col shadow-sm">
                 <h3 className="font-bold text-gray-900 mb-6 text-lg">Processing Options</h3>
                 
-                {error && <div className="text-red-500 bg-red-50 p-3 rounded-lg text-sm mb-4 border border-red-100">{error}</div>}
+                {error && <div ref={optionsErrorRef} className="text-red-500 bg-red-50 p-3 rounded-lg text-sm mb-4 border border-red-100">{error}</div>}
 
                 <div className="flex flex-col gap-5 flex-1 overflow-auto pr-2">
                   <div className="flex flex-col gap-2">

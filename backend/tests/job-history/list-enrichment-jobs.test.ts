@@ -22,7 +22,13 @@ describe("Job History", () => {
           fileName: "contacts.csv",
           csv: "company_name\nAcme Inc.\n",
         },
-        configuredOperations: [],
+        configuredOperations: [
+          {
+            kind: "clean-company-name",
+            input: { kind: "source-field", field: "company_name" },
+            generatedField: "company_name_cleaned",
+          },
+        ],
       },
       { jobSnapshotStore: jobStore },
     );
@@ -43,7 +49,7 @@ describe("Job History", () => {
           kind: "Job",
           fileName: "contacts.csv",
           status: "Queued",
-          progress: { total: 0, completed: 0, failed: 0, remaining: 0 },
+          progress: { total: 1, completed: 0, failed: 0, remaining: 1 },
         },
       ],
     });
@@ -135,7 +141,13 @@ describe("Job History", () => {
           fileName: "contacts.csv",
           csv: "company_name\nAcme Inc.\n",
         },
-        configuredOperations: [],
+        configuredOperations: [
+          {
+            kind: "clean-company-name",
+            input: { kind: "source-field", field: "company_name" },
+            generatedField: "company_name_cleaned",
+          },
+        ],
       },
       { jobSnapshotStore: jobStore },
     );
@@ -621,7 +633,13 @@ describe("Job History", () => {
           fileName: "contacts.csv",
           csv: "company_name\nAcme Inc.\n",
         },
-        configuredOperations: [],
+        configuredOperations: [
+          {
+            kind: "clean-company-name",
+            input: { kind: "source-field", field: "company_name" },
+            generatedField: "company_name_cleaned",
+          },
+        ],
       },
       { jobSnapshotStore: jobStore },
     );

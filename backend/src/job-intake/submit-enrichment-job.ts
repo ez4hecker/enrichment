@@ -212,6 +212,12 @@ type PromptReferencesNoInputError = {
   generatedField: string;
 };
 
+// Without an operation the job has nothing to generate and would complete at once with 0/0 progress.
+type NoConfiguredOperationsError = {
+  code: "NO_CONFIGURED_OPERATIONS";
+  message: string;
+};
+
 type SubmitEnrichmentJobResult =
   | {
       status: "Accepted";
@@ -232,6 +238,7 @@ type SubmitEnrichmentJobResult =
         | PromptReferencesNoInputError
         | UnknownGenerationModelError
         | InvalidLeadLookupError
+        | NoConfiguredOperationsError
       >;
     };
 
@@ -442,7 +449,18 @@ export async function submitEnrichmentJob(
       ? []
       : [{ code: "INVALID_LEAD_LOOKUP" as const, generatedField: operation.generatedField, message }];
   });
+  const noConfiguredOperationsErrors =
+    input.configuredOperations.length === 0
+      ? [
+          {
+            code: "NO_CONFIGURED_OPERATIONS" as const,
+            message:
+              "Add at least one operation before starting the job; a job without operations generates nothing.",
+          },
+        ]
+      : [];
   const errors = [
+    ...noConfiguredOperationsErrors,
     ...columnCountErrors,
     ...sourceFieldErrors,
     ...duplicateGeneratedFieldErrors,

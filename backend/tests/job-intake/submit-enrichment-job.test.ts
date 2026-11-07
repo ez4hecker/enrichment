@@ -85,6 +85,26 @@ describe("Job Intake", () => {
     }
   });
 
+  // A job with mappings but no operations would "complete" with 0/0 progress and generate nothing.
+  it("rejects a job with no Configured Operations, even when columns are mapped", async () => {
+    const result = await submitEnrichmentJob({
+      sourceList: {
+        fileName: "contacts.csv",
+        csv: "First Name,Company Name\nAda,Acme Inc.\nBob,Globex LLC\n",
+      },
+      columnMappings: [
+        { sourceField: "First Name", canonicalDataType: "first-name" },
+        { sourceField: "Company Name", canonicalDataType: "company-name" },
+      ],
+      configuredOperations: [],
+    });
+
+    expect(result).toEqual({
+      status: "Rejected",
+      errors: [{ code: "NO_CONFIGURED_OPERATIONS", message: expect.any(String) }],
+    });
+  });
+
   it("rejects a Configured Operation that references a missing Source Field", async () => {
     const result = await submitEnrichmentJob({
       sourceList: {
@@ -224,7 +244,13 @@ describe("Job Intake", () => {
         { sourceField: "company", canonicalDataType: "company-name" },
         { sourceField: "contact", canonicalDataType: "first-name" },
       ],
-      configuredOperations: [],
+      configuredOperations: [
+        {
+          kind: "clean-company-name",
+          input: { kind: "source-field", field: "company" },
+          generatedField: "company_cleaned",
+        },
+      ],
     });
 
     expect(result).toMatchObject({
@@ -247,7 +273,13 @@ describe("Job Intake", () => {
       columnMappings: [
         { sourceField: "website", canonicalDataType: "website" },
       ],
-      configuredOperations: [],
+      configuredOperations: [
+        {
+          kind: "clean-company-name",
+          input: { kind: "source-field", field: "company" },
+          generatedField: "company_cleaned",
+        },
+      ],
     });
 
     expect(result).toEqual({
@@ -270,7 +302,13 @@ describe("Job Intake", () => {
           fileName: "contacts.csv",
           csv: "company_name\nAcme Inc.\n",
         },
-        configuredOperations: [],
+        configuredOperations: [
+          {
+            kind: "clean-company-name",
+            input: { kind: "source-field", field: "company_name" },
+            generatedField: "company_name_cleaned",
+          },
+        ],
       },
       {
         jobSnapshotStore: {
@@ -304,7 +342,13 @@ describe("Job Intake", () => {
           fileName: "contacts.csv",
           csv: "company_name\nAcme Inc.\n",
         },
-        configuredOperations: [],
+        configuredOperations: [
+          {
+            kind: "clean-company-name",
+            input: { kind: "source-field", field: "company_name" },
+            generatedField: "company_name_cleaned",
+          },
+        ],
       },
       {
         jobSnapshotStore: {
@@ -346,7 +390,13 @@ describe("Job Intake", () => {
           fileName: "contacts.csv",
           csv: "company_name\nAcme Inc.\n",
         },
-        configuredOperations: [],
+        configuredOperations: [
+          {
+            kind: "clean-company-name",
+            input: { kind: "source-field", field: "company_name" },
+            generatedField: "company_name_cleaned",
+          },
+        ],
       },
       {
         jobSnapshotStore: jobStore,

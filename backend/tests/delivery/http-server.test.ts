@@ -172,7 +172,13 @@ describe("HTTP delivery", () => {
           fileName: "large-contacts.csv",
           csv: `company_name\n${"Acme ".repeat(350_000)}\n`,
         },
-        configuredOperations: [],
+        configuredOperations: [
+          {
+            kind: "clean-company-name",
+            input: { kind: "source-field", field: "company_name" },
+            generatedField: "company_name_cleaned",
+          },
+        ],
       },
     });
 
