@@ -70,7 +70,7 @@ export default function JobResultsPage() {
             </>
           ) : (
             <>
-              <h1 className="text-2xl font-bold text-gray-900 truncate" title={job?.fileName}>{job?.fileName || "Results"}</h1>
+              <h1 className="text-2xl font-semibold text-gray-900 truncate" title={job?.fileName}>{job?.fileName || "Results"}</h1>
               {!error && (
                 <p className="text-sm text-gray-500">
                   {rows.length.toLocaleString()} row{rows.length === 1 ? "" : "s"} · {headers.filter(h => h !== ERRORS_COLUMN).length} columns
@@ -128,7 +128,7 @@ export default function JobResultsPage() {
                         <td
                           key={column}
                           title={value}
-                          className={`p-3 truncate max-w-[260px] ${
+                          className={`p-3 truncate max-w-[220px] ${
                             header === ERRORS_COLUMN ? "text-amber-800 bg-amber-50/40 text-xs"
                               : value === "[Not Found]" || value === "[Uncertain]" ? "text-gray-400"
                               : "text-gray-900"

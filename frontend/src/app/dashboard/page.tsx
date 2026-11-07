@@ -41,7 +41,7 @@ export default function JobHistoryPage() {
         }}
       >
         <div className="flex pt-14 pb-8 px-12 flex-col shrink-0 gap-6 w-full">
-          <h1 className="block text-[#fff] text-[1.75rem] font-bold">
+          <h1 className="block text-[#fff] text-[1.75rem] font-semibold">
             Welcome back, Arjun
           </h1>
         </div>
@@ -50,7 +50,7 @@ export default function JobHistoryPage() {
       <div className="flex-1 w-full max-w-6xl px-10 py-10 mx-auto">
         <header className="flex pb-8 justify-between items-center gap-4">
           <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-bold text-gray-900">History</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">History</h1>
             <p className="text-sm text-gray-500">Your enrichment jobs. Completed results can be downloaded.</p>
           </div>
           <Link href="/dashboard/new-job" className="h-10 inline-flex items-center justify-center px-5 rounded-lg text-sm text-white font-semibold bg-black hover:bg-gray-800 transition-colors">
@@ -81,7 +81,7 @@ export default function JobHistoryPage() {
         ) : (
           <div className="border border-border bg-background rounded-lg overflow-hidden shadow-sm">
             <table className="w-full text-left text-sm text-foreground">
-              <thead className="bg-muted text-muted-foreground text-xs uppercase font-medium">
+              <thead className="bg-muted text-muted-foreground text-xs font-medium">
                 <tr>
                   <th className="px-6 py-4 border-b border-border">File</th>
                   <th className="px-6 py-4 border-b border-border">Type</th>

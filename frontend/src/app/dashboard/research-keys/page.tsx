@@ -93,7 +93,7 @@ export default function ResearchKeysPage() {
   return (
     <div className="flex flex-col flex-1 bg-white p-8 w-full">
       <div className="max-w-3xl w-full mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Research Keys</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-1">Research keys</h1>
         <p className="text-gray-500 text-sm mb-6">
           AI Research uses free Google searches from Gemini API keys in this pool first. Paid search (Serper) only runs when the pool is out of free searches.
         </p>
@@ -101,12 +101,12 @@ export default function ResearchKeysPage() {
         {pool && (
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="border border-gray-200 rounded-xl p-4">
-              <div className="text-xs font-semibold text-gray-500 uppercase">Keys in the pool</div>
-              <div className="text-2xl font-bold text-gray-900 mt-1">{pool.activeKeys}</div>
+              <div className="text-xs font-semibold text-gray-500">Keys in the pool</div>
+              <div className="text-2xl font-semibold text-gray-900 mt-1">{pool.activeKeys}</div>
             </div>
             <div className="border border-gray-200 rounded-xl p-4">
-              <div className="text-xs font-semibold text-gray-500 uppercase">Free searches left today</div>
-              <div className="text-2xl font-bold text-gray-900 mt-1">{pool.searchesLeftToday.toLocaleString()}</div>
+              <div className="text-xs font-semibold text-gray-500">Free searches left today</div>
+              <div className="text-2xl font-semibold text-gray-900 mt-1">{pool.searchesLeftToday.toLocaleString()}</div>
               <div className="text-xs text-gray-400 mt-0.5">Resets at midnight Pacific time</div>
             </div>
           </div>
@@ -116,7 +116,7 @@ export default function ResearchKeysPage() {
         {notice && <div className="text-emerald-700 bg-emerald-50 p-3 rounded-lg text-sm mb-4 border border-emerald-100">{notice}</div>}
 
         <form onSubmit={handleAdd} className="border border-gray-200 rounded-2xl p-6 mb-8 flex flex-col gap-4 shadow-sm">
-          <h2 className="font-bold text-gray-900 flex items-center gap-2"><KeyRound className="w-5 h-5 text-gray-400" /> Add a key</h2>
+          <h2 className="font-semibold text-gray-900 flex items-center gap-2"><KeyRound className="w-5 h-5 text-gray-400" /> Add a key</h2>
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700" htmlFor="api-key">Gemini API key</label>
             <input
@@ -158,11 +158,11 @@ export default function ResearchKeysPage() {
           </button>
         </form>
 
-        <h2 className="font-bold text-gray-900 mb-3">Your keys</h2>
+        <h2 className="font-semibold text-gray-900 mb-3">Your keys</h2>
         {loading ? (
           <ListSkeleton rows={2} />
         ) : keys.length === 0 ? (
-          <div className="text-sm text-gray-500 italic p-6 bg-gray-50 rounded-xl text-center border border-dashed border-gray-200">You haven't added any keys.</div>
+          <div className="text-sm text-gray-500 p-6 bg-gray-50 rounded-xl text-center border border-dashed border-gray-200">You haven't added any keys.</div>
         ) : (
           <div className="flex flex-col gap-2">
             {keys.map(key => (

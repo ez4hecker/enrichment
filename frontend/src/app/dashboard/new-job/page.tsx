@@ -932,7 +932,7 @@ export default function NewJobPage() {
           </Link>
           
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Upload your list</h1>
+            <h1 className="text-3xl font-semibold text-gray-900 mb-2">Upload your list</h1>
             <p className="text-gray-500">Upload a CSV file containing your contacts or companies to enrich.</p>
           </div>
 
@@ -958,7 +958,7 @@ export default function NewJobPage() {
       {step === 2 && (
         <div className="max-w-4xl mx-auto w-full">
           <div className="text-center mb-10 mt-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Map columns</h1>
+            <h1 className="text-3xl font-semibold text-gray-900 mb-2">Map columns</h1>
             <p className="text-gray-500">Map columns from your file to workspace properties.</p>
           </div>
 
@@ -978,15 +978,15 @@ export default function NewJobPage() {
               return (
                 <div key={idx} className="grid grid-cols-[1fr_auto_1fr] gap-6 items-center px-4">
                   <div className="flex flex-col overflow-hidden">
-                    <span className="font-bold text-gray-900 truncate">{header}</span>
+                    <span className="font-semibold text-gray-900 truncate">{header}</span>
                     <span className="text-sm text-gray-500 truncate" title={sampleData[idx] || "No data"}>
-                      {sampleData[idx] || <span className="italic text-gray-400">Empty</span>}
+                      {sampleData[idx] || <span className="text-gray-400">Empty</span>}
                     </span>
                   </div>
                   <div className="flex justify-center w-12">
                     {isIgnored ? (
                       <div className="flex items-center gap-1">
-                        <div className="h-[2px] w-4 bg-gray-300"></div>
+                        <div className="h-0.5 w-4 bg-gray-300"></div>
                         <X className="w-5 h-5 text-gray-400 p-0.5 rounded-full border border-gray-300" />
                       </div>
                     ) : (
@@ -1037,11 +1037,11 @@ export default function NewJobPage() {
       {step === 3 && (
         <div className="flex flex-col flex-1 w-full">
           {/* Main Layout: Table on left, Sidebar on right */}
-          <div className="flex gap-6 flex-1 min-h-[500px]">
+          <div className="flex gap-6 flex-1 min-h-[512px]">
              {/* Left Table */}
              <div className="flex-1 bg-white border border-gray-200 rounded-2xl overflow-hidden flex flex-col shadow-sm">
                 <div className="p-5 border-b border-gray-200 flex flex-wrap gap-3 justify-between items-center bg-gray-50/50">
-                   <h2 className="font-bold text-gray-900 flex items-center gap-2">
+                   <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                      <LayoutGrid className="w-5 h-5 text-gray-400" />
                      Contacts
                      <span className="text-gray-500 font-normal text-sm ml-1">{allData.length.toLocaleString()}</span>
@@ -1102,7 +1102,7 @@ export default function NewJobPage() {
                               </td>
                               <td className="p-4 text-center text-gray-400 text-xs">{rIdx + 1}</td>
                               {visibleColumns.map(({ i }) => (
-                                 <td key={i} className="p-4 truncate max-w-[200px] text-gray-600" title={allData[rIdx][i]}>{allData[rIdx][i]}</td>
+                                 <td key={i} className="p-4 truncate max-w-[220px] text-gray-600" title={allData[rIdx][i]}>{allData[rIdx][i]}</td>
                               ))}
                               {resultColumns.map((column, c) => {
                                  const value = resultsByRow[rIdx]?.[c] ?? "";
@@ -1137,7 +1137,7 @@ export default function NewJobPage() {
 
              {/* Right Sidebar */}
              <div className="w-[340px] bg-white border border-gray-200 rounded-2xl p-6 flex flex-col shadow-sm">
-                <h3 className="font-bold text-gray-900 mb-6 text-lg">Processing Options</h3>
+                <h3 className="font-semibold text-gray-900 mb-4 text-lg">Processing options</h3>
                 
                 {error && <div ref={optionsErrorRef} className="text-red-500 bg-red-50 p-3 rounded-lg text-sm mb-4 border border-red-100">{error}</div>}
 
@@ -1199,7 +1199,7 @@ export default function NewJobPage() {
                       <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-gray-700">Match on these columns</label>
                         {lookupBindings.length === 0 && (
-                          <div className="text-xs text-gray-500 italic">No columns yet. Add one, two or more: the more each row gives, the closer the match.</div>
+                          <div className="text-xs text-gray-500">No columns yet. Add one, two or more: the more each row gives, the closer the match.</div>
                         )}
                         {lookupBindings.map((binding, index) => (
                           <div key={index} className="flex items-center gap-1.5">
@@ -1262,10 +1262,10 @@ export default function NewJobPage() {
                         <div className="flex flex-wrap gap-1">
                           {!lookupInfo && ["w-16", "w-20", "w-14", "w-24", "w-[4.5rem]"].map(width => <Skeleton key={width} className={`h-5 ${width}`} />)}
                           {lookupFields.map(field => (
-                            <span key={field} className="text-[11px] bg-violet-50 text-violet-800 border border-violet-100 px-1.5 py-0.5 rounded-md">{fieldLabel(lookupSubject, field)}</span>
+                            <span key={field} className="text-xs bg-violet-50 text-violet-800 border border-violet-100 px-1.5 py-0.5 rounded-md">{fieldLabel(lookupSubject, field)}</span>
                           ))}
                           {lookupMode === "custom" && (
-                            <button type="button" onClick={() => setFieldPickerOpen(true)} className="text-[11px] font-semibold text-violet-700 hover:text-violet-900 px-1">Edit</button>
+                            <button type="button" onClick={() => setFieldPickerOpen(true)} className="text-xs font-semibold text-violet-700 hover:text-violet-900 px-1">Edit</button>
                           )}
                         </div>
                       </div>
@@ -1281,7 +1281,7 @@ export default function NewJobPage() {
                               className={`py-1.5 rounded-lg transition-colors ${matchStrictness === option.id ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"}`}
                             >
                               {option.label}
-                              <span className="ml-1 text-[11px] font-medium text-gray-400">{Math.round((option.confidence ?? defaultMatchConfidence) * 100)}%</span>
+                              <span className="ml-1 text-xs font-medium text-gray-400">{Math.round((option.confidence ?? defaultMatchConfidence) * 100)}%</span>
                             </button>
                           ))}
                         </div>
@@ -1548,7 +1548,7 @@ export default function NewJobPage() {
                   )}
                   {opKind !== LEAD_LOOKUP && (
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-semibold text-gray-700">Generated Column</label>
+                    <label className="text-sm font-semibold text-gray-700">Generated column</label>
                     <input 
                       type="text" 
                       value={opOutput}
@@ -1574,11 +1574,11 @@ export default function NewJobPage() {
                       Configured Operations
                       <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">{operations.length}</span>
                     </div>
-                    {operations.length === 0 && <div className="text-sm text-gray-500 italic p-4 bg-gray-50 rounded-xl text-center border border-dashed border-gray-200">No operations added.</div>}
+                    {operations.length === 0 && <div className="text-sm text-gray-500 p-4 bg-gray-50 rounded-xl text-center border border-dashed border-gray-200">No operations added.</div>}
                     {operations.map((op, i) => (
                        <div key={i} className="text-sm bg-white border border-gray-200 p-3 rounded-xl flex justify-between items-start shadow-sm group">
                           <div className="flex flex-col gap-1 pr-2">
-                            <span className="font-bold text-gray-900">{op.kind === "custom-operation" ? op.name : op.kind === RESEARCH_WRITE ? "Research & Write" : op.kind.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</span>
+                            <span className="font-semibold text-gray-900">{op.kind === "custom-operation" ? op.name : op.kind === RESEARCH_WRITE ? "Research & Write" : op.kind.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</span>
                             {op.kind === RESEARCH_WRITE && (
                               <span className="text-gray-600 text-xs line-clamp-3">{op.promptTemplate}</span>
                             )}
@@ -1617,7 +1617,7 @@ export default function NewJobPage() {
                         up to {(dataRowCount * operations.filter(op => op.kind === "custom-operation" && !op.generationModel).length).toLocaleString()} questions
                       </span>{" "}
                       from earlier research and free pool searches first, then paid search (about $0.001 each). A job never spends more than $3.50; rows past that get [Not Found]. Repeated companies are researched once.{" "}
-                      <Link href="/dashboard/research-keys" className="underline">Research Keys</Link>
+                      <Link href="/dashboard/research-keys" className="underline">Research keys</Link>
                     </p>
                   )}
                   {operations.some(op => op.kind === LEAD_LOOKUP) && (
@@ -1751,7 +1751,7 @@ function FieldPickerModal({ open, subject, fields, initial, onApply, onClose }: 
       >
         <div className="p-5 border-b border-gray-200 flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-lg font-bold text-gray-900">Choose {subject === "person" ? "person" : "company"} fields</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Choose {subject === "person" ? "person" : "company"} fields</h3>
             <p className="text-sm text-gray-500">Each ticked field becomes a new column next to your data.</p>
           </div>
           <button type="button" onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg" title="Close">
@@ -1775,7 +1775,7 @@ function FieldPickerModal({ open, subject, fields, initial, onApply, onClose }: 
             const allTicked = groupFields.every(field => draft.includes(field.id));
             return (
               <div key={group} className="border border-gray-200 rounded-xl p-3">
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-2 cursor-pointer">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={allTicked}

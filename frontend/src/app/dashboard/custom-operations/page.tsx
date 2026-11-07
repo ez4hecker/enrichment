@@ -26,7 +26,7 @@ export default function CustomOperationsPage() {
   return (
     <div className="flex flex-col flex-1 bg-surface-2 p-8 h-full w-full">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-foreground">Custom Operations</h2>
+        <h2 className="text-2xl font-semibold text-foreground">Custom operations</h2>
         <button className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium text-sm hover:bg-primary/90">
           Create Operation
         </button>
@@ -40,14 +40,14 @@ export default function CustomOperationsPage() {
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
               <span className="text-2xl">⚙️</span>
             </div>
-            <h3 className="text-lg font-medium text-foreground mb-2">No Custom Operations</h3>
+            <h3 className="text-lg font-medium text-foreground mb-2">No custom operations</h3>
             <p className="text-muted-foreground max-w-md">
               Create AI-powered operations to extract specific data from URLs or text during your enrichment jobs.
             </p>
           </div>
         ) : (
           <table className="w-full text-left text-sm text-foreground">
-            <thead className="bg-muted text-muted-foreground text-xs uppercase font-medium">
+            <thead className="bg-muted text-muted-foreground text-xs font-medium">
               <tr>
                 <th className="px-6 py-4">Name</th>
                 <th className="px-6 py-4">Prompt</th>

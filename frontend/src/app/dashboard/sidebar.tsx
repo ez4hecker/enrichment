@@ -9,7 +9,7 @@ import ThemeToggle from "./theme-toggle";
 const NAV_ITEMS = [
   { href: "/dashboard/new-job", label: "Upload CSV", icon: Upload },
   { href: "/dashboard", label: "History", icon: History },
-  { href: "/dashboard/research-keys", label: "Research Keys", icon: KeyRound },
+  { href: "/dashboard/research-keys", label: "Research keys", icon: KeyRound },
 ];
 
 export default function Sidebar() {
