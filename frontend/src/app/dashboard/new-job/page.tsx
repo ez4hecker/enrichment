@@ -607,11 +607,16 @@ export default function NewJobPage() {
       if (!res.ok) throw new Error(`Failed: ${await responseError(res)}`);
       const data = await res.json();
       const labelIndex = headers.indexOf(previewLabelColumn);
-      setPreviewAnswers(selectedRows.map((row, i) => ({
+      const answers = selectedRows.map((row, i) => ({
         company: row[labelIndex] || "—",
         answer: data.rows?.[i]?.answer ?? "[Not Found]",
         row,
-      })));
+      }));
+      setPreviewAnswers(answers);
+      // Answers only in page memory vanished on leaving the page and never reached a CSV:
+      // put them in the table (so Download CSV includes them) and save them to History straight away.
+      appendPreviewToTable(answers.map(a => a.answer));
+      await savePreviewToHistory(answers);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -744,12 +749,43 @@ export default function NewJobPage() {
 
   // Saves the answers as a History entry named after the uploaded file; the question becomes the answer column.
   // A writing instruction is long and full of {Column}s, so its column uses the Generated Column name instead.
-  const handleSavePreview = async () => {
+  const previewAnswerField = () => {
     const answerName = isWriting ? (opOutput.trim() || (opKind === RESEARCH_WRITE ? "Research & Write" : "AI Writing")) : question.trim();
-    const answerField = headers.includes(answerName) ? `${answerName} (AI)` : answerName;
+    return headers.includes(answerName) ? `${answerName} (AI)` : answerName;
+  };
+
+  // Adds the previewed answers to the table as a column; previewing again with the same column name
+  // overwrites those rows instead of adding another column.
+  const appendPreviewToTable = (answers: string[]) => {
+    const field = previewAnswerField();
+    const existing = resultColumns.indexOf(field);
+    const column = existing >= 0 ? existing : resultColumns.length;
+    const width = existing >= 0 ? resultColumns.length : resultColumns.length + 1;
+    setResultsByRow(previous => {
+      const next = { ...previous };
+      selectedIndexes.forEach((rowIndex, i) => {
+        const cells = [...(next[rowIndex] ?? [])];
+        while (cells.length < width) cells.push("");
+        cells[column] = answers[i] ?? "";
+        next[rowIndex] = cells;
+      });
+      return next;
+    });
+    if (existing < 0) setResultColumns(columns => [...columns, field]);
+    if (selectedIndexes.length > 0) {
+      setRowFilter("");
+      setTablePage(Math.floor(selectedIndexes[0] / ROWS_PER_PAGE));
+      setFreshRun({ columnStart: column, firstRow: selectedIndexes[0] });
+    }
+  };
+
+  const handleSavePreview = () => savePreviewToHistory(previewAnswers);
+
+  const savePreviewToHistory = async (answers: Array<{ answer: string; row: string[] }>) => {
+    const answerField = previewAnswerField();
     const csv = [
       csvLine([...headers, answerField]),
-      ...previewAnswers.map(p => csvLine([...p.row, p.answer])),
+      ...answers.map(p => csvLine([...p.row, p.answer])),
     ].join("\n") + "\n";
     setError("");
     setSaveStatus("saving");
@@ -1385,6 +1421,16 @@ export default function NewJobPage() {
                               {p.answer}
                             </div>
                           ))}
+                          <div className="text-xs text-gray-600">
+                            Added to the table as the <span className="font-semibold">{previewAnswerField()}</span> column.
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleDownloadResults}
+                            className="bg-black hover:bg-gray-800 text-white rounded-xl py-2 text-sm font-semibold transition-colors"
+                          >
+                            Download CSV with results
+                          </button>
                           {saveStatus === "saved" ? (
                             <div className="flex items-center justify-center gap-1.5 text-sm font-semibold text-emerald-700 py-2">
                               Saved to History as {fileName}
