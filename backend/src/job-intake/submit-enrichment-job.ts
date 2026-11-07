@@ -93,7 +93,21 @@ export type LeadLookupOperation = ConfiguredOperationBase & {
   minimumConfidence?: number;
 };
 
+/**
+ * Writes one line per row from a pasted instruction. Before writing it gathers the company's
+ * LeadOcean profile and one fixed web search for hiring and platform signals, and gives both
+ * to the Generation Model. Placeholders bound to columns are filled from the row; any other
+ * {placeholder} is left for the writer to fill from what was gathered, or to treat as unknown.
+ */
+export type ResearchAndWriteOperation = ConfiguredOperationBase & {
+  kind: "research-and-write";
+  promptTemplate: string;
+  generationModel: string;
+  inputBindings: Array<PromptInputBinding>;
+};
+
 export type ConfiguredOperation =
+  | ResearchAndWriteOperation
   | LeadLookupOperation
   | CleanCompanyNameOperation
   | CleanFirstNameOperation
@@ -212,6 +226,13 @@ type PromptReferencesNoInputError = {
   generatedField: string;
 };
 
+// Research & Write identifies the company it researches by the columns mapped to Website or Company Name.
+type NoCompanyToResearchError = {
+  code: "NO_COMPANY_TO_RESEARCH";
+  generatedField: string;
+  message: string;
+};
+
 // Without an operation the job has nothing to generate and would complete at once with 0/0 progress.
 type NoConfiguredOperationsError = {
   code: "NO_CONFIGURED_OPERATIONS";
@@ -239,6 +260,7 @@ type SubmitEnrichmentJobResult =
         | UnknownGenerationModelError
         | InvalidLeadLookupError
         | NoConfiguredOperationsError
+        | NoCompanyToResearchError
       >;
     };
 
@@ -398,11 +420,13 @@ export async function submitEnrichmentJob(
   );
   const unknownGenerationModelErrors = input.configuredOperations.flatMap(
     (operation) => {
-      if (operation.kind !== "custom-operation") {
+      if (operation.kind !== "custom-operation" && operation.kind !== "research-and-write") {
         return [];
       }
 
-      const generationModel = generationModelFor(operation);
+      const generationModel = operation.kind === "research-and-write"
+        ? operation.generationModel
+        : generationModelFor(operation);
 
       return generationModel === undefined ||
         findGenerationModel(generationModel) !== undefined
@@ -459,8 +483,24 @@ export async function submitEnrichmentJob(
           },
         ]
       : [];
+  // Roles arrive as "website", "Website" or "company-name"; job execution compares them the same loose way.
+  const mapsCompany = (input.columnMappings ?? []).some((columnMapping) =>
+    ["website", "companyname"].includes(columnMapping.canonicalDataType.toLowerCase().replace(/[^a-z]/g, "")),
+  );
+  const noCompanyToResearchErrors = mapsCompany
+    ? []
+    : input.configuredOperations.flatMap((operation) =>
+        operation.kind === "research-and-write"
+          ? [{
+              code: "NO_COMPANY_TO_RESEARCH" as const,
+              generatedField: operation.generatedField,
+              message: "Research & Write needs a column mapped to Website or Company Name to know which company to research.",
+            }]
+          : [],
+      );
   const errors = [
     ...noConfiguredOperationsErrors,
+    ...noCompanyToResearchErrors,
     ...columnCountErrors,
     ...sourceFieldErrors,
     ...duplicateGeneratedFieldErrors,
@@ -536,7 +576,9 @@ export async function dispatchPendingEnrichmentJobs(input: {
 function inputReferencesFor(
   operation: ConfiguredOperation,
 ): Array<InputReference> {
-  return operation.kind === "custom-operation" || operation.kind === "lead-lookup"
+  return operation.kind === "custom-operation" ||
+    operation.kind === "lead-lookup" ||
+    operation.kind === "research-and-write"
     ? operation.inputBindings.map((binding) => binding.input)
     : [operation.input];
 }
@@ -544,6 +586,16 @@ function inputReferencesFor(
 function copyConfiguredOperation(
   operation: ConfiguredOperation,
 ): ConfiguredOperation {
+  if (operation.kind === "research-and-write") {
+    return {
+      ...operation,
+      inputBindings: operation.inputBindings.map((binding) => ({
+        ...binding,
+        input: { ...binding.input },
+      })),
+    };
+  }
+
   if (operation.kind === "lead-lookup") {
     return {
       ...operation,

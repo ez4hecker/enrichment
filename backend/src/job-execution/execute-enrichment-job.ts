@@ -5,7 +5,9 @@ import type {
   ExpectedOutputType,
   InputReference,
   LeadLookupOperation,
+  ResearchAndWriteOperation,
 } from "../job-intake/submit-enrichment-job.js";
+import { researchAndWrite } from "./research-and-write.js";
 import {
   LeadDirectoryUnavailableError,
   type LeadLookup,
@@ -79,7 +81,7 @@ type ResolvedInput = {
   error?: string;
 };
 
-type StandardOperation = Exclude<ConfiguredOperation, CustomOperation | LeadLookupOperation>;
+type StandardOperation = Exclude<ConfiguredOperation, CustomOperation | LeadLookupOperation | ResearchAndWriteOperation>;
 
 type CustomOperationDetails = {
   name: string;
@@ -303,6 +305,17 @@ async function executeConfiguredOperation(
     );
   }
 
+  if (operation.kind === "research-and-write") {
+    return executeResearchAndWrite(
+      operation,
+      sourceFieldIndexes,
+      sourceValues,
+      generatedResults,
+      dependencies,
+      subject,
+    );
+  }
+
   if (operation.kind === "custom-operation") {
     return executeCustomOperation(
       operation,
@@ -385,6 +398,55 @@ async function executeCustomOperation(
   }
 
   return normalizeCustomOperationOutput(value, definition.expectedOutputType);
+}
+
+async function executeResearchAndWrite(
+  operation: ResearchAndWriteOperation,
+  sourceFieldIndexes: Map<string, number>,
+  sourceValues: Array<string>,
+  generatedResults: Map<string, OperationResult>,
+  dependencies: JobExecutionDependencies,
+  subject: ResearchSubject,
+): Promise<OperationResult> {
+  const boundValues = new Map<string, string>();
+
+  for (const binding of operation.inputBindings) {
+    const resolvedInput = resolveInputValue(
+      binding.input,
+      sourceFieldIndexes,
+      sourceValues,
+      generatedResults,
+    );
+
+    if (resolvedInput.error !== undefined) {
+      return customOperationFailure("Text", resolvedInput.error);
+    }
+
+    boundValues.set(binding.variable, resolvedInput.value ?? "");
+  }
+
+  if (dependencies.customOperationProvider === undefined) {
+    return customOperationFailure("Text", "Custom Operation provider is unavailable");
+  }
+
+  let value: string | number | boolean;
+
+  try {
+    value = await researchAndWrite({
+      instruction: renderPromptTemplate(operation.promptTemplate, boundValues),
+      generationModel: operation.generationModel,
+      subject,
+      provider: dependencies.customOperationProvider,
+      ...(dependencies.leadLookup === undefined ? {} : { leadLookup: dependencies.leadLookup }),
+    });
+  } catch (error) {
+    return customOperationFailure(
+      "Text",
+      error instanceof SpendLimitReachedError ? error.message : "Research & Write could not be completed",
+    );
+  }
+
+  return normalizeCustomOperationOutput(value, "Text");
 }
 
 async function executeLeadLookup(

@@ -657,11 +657,28 @@ function parseConfiguredOperation(
 
     return input === undefined || typeof value.kind !== "string"
       ? undefined
-      : { kind: value.kind as Exclude<ConfiguredOperation["kind"], "custom-operation" | "lead-lookup">, input, generatedField: value.generatedField };
+      : { kind: value.kind as Exclude<ConfiguredOperation["kind"], "custom-operation" | "lead-lookup" | "research-and-write">, input, generatedField: value.generatedField };
   }
 
   if (value.kind === "lead-lookup") {
     return parseLeadLookupOperation(value, value.generatedField);
+  }
+
+  if (value.kind === "research-and-write") {
+    const inputBindings = parseInputBindings(value.inputBindings);
+
+    // Whether the Generation Model exists is checked at intake, which names it.
+    return inputBindings === undefined ||
+      !isNonEmptyString(value.promptTemplate) ||
+      !isNonEmptyString(value.generationModel)
+      ? undefined
+      : {
+          kind: "research-and-write",
+          promptTemplate: value.promptTemplate,
+          generationModel: value.generationModel,
+          inputBindings,
+          generatedField: value.generatedField,
+        };
   }
 
   return value.kind === "custom-operation"

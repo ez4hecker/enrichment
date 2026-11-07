@@ -51,14 +51,36 @@ function aiWritingOperation(instruction: string, generationModel: string, genera
   };
 }
 
+// Pulls the company's LeadOcean profile and one web search for hiring and platform signals,
+// then writes from the pasted instruction plus what was found. {Column} placeholders are filled
+// from the row; any other {placeholder}, such as {Signal}, is left for the writer to fill.
+const RESEARCH_WRITE = "research-and-write";
+
+function researchAndWriteOperation(instruction: string, generationModel: string, generatedField: string, headers: string[]) {
+  return {
+    kind: RESEARCH_WRITE,
+    promptTemplate: instruction.trim(),
+    generationModel,
+    inputBindings: promptColumns(instruction)
+      .filter(column => headers.includes(column))
+      .map(column => ({ variable: column, input: { kind: "source-field", field: column } })),
+    generatedField,
+  };
+}
+
+// About this much gathered research (profile and signals) is added to each Research & Write prompt.
+const RESEARCH_CONTEXT_CHARACTERS = 1500;
+// One paid search and one cheap read per company when nothing earlier or free answers it.
+const RESEARCH_DOLLARS_PER_COMPANY = 0.0013;
+
 // The backend adds about this many characters of writing instructions to every prompt.
 const WRITING_INSTRUCTION_CHARACTERS = 330;
 
-function estimatedWritingDollarsPerRow(model: GenerationModel, instruction: string, headers: string[], sampleRows: string[][]) {
+function estimatedWritingDollarsPerRow(model: GenerationModel, instruction: string, headers: string[], sampleRows: string[][], extraCharacters = 0) {
   const rows = sampleRows.length > 0 ? sampleRows : [[]];
   const averagePromptCharacters = rows.reduce((total, row) => total + instruction.replace(/\{([^{}]+)\}/g, (_, column) => row[headers.indexOf(column)] ?? "").length, 0) / rows.length;
   // About four characters per token for English text.
-  const inputTokens = (WRITING_INSTRUCTION_CHARACTERS + averagePromptCharacters) / 4;
+  const inputTokens = (WRITING_INSTRUCTION_CHARACTERS + averagePromptCharacters + extraCharacters) / 4;
   return (inputTokens * model.inputDollarsPerMillionTokens + model.estimatedOutputTokensPerRow * model.outputDollarsPerMillionTokens) / 1_000_000;
 }
 
@@ -340,7 +362,9 @@ export default function NewJobPage() {
     setStep(3);
   };
 
-  const isAiOperation = opKind === AI_RESEARCH || opKind === AI_WRITING;
+  const isAiOperation = opKind === AI_RESEARCH || opKind === AI_WRITING || opKind === RESEARCH_WRITE;
+  // AI Writing and Research & Write share the instruction box, column buttons and model picker.
+  const isWriting = opKind === AI_WRITING || opKind === RESEARCH_WRITE;
 
   // Starts the lookup's inputs from the columns mapped in step 2.
   const defaultLookupBindings = (subject: LookupSubject) => {
@@ -429,6 +453,10 @@ export default function NewJobPage() {
   // Returns why the AI Writing instruction cannot run yet, or "" when it can.
   const writingProblem = () => {
     if (!question.trim()) return "Please type what to write for each row.";
+    if (opKind === RESEARCH_WRITE) {
+      if (!hasCompanyColumn) return "Map a column to Website or Company Name first, so Research & Write knows which company to research.";
+      return writingModel ? "" : "Choose a model.";
+    }
     const columns = promptColumns(question);
     if (columns.length === 0) return "Insert at least one column, such as {First Name}, so each row gets its own text.";
     const unknown = columns.filter(column => !headers.includes(column));
@@ -441,7 +469,7 @@ export default function NewJobPage() {
   };
 
   const handleAddOperation = () => {
-    if (opKind === AI_WRITING) {
+    if (isWriting) {
       const problem = writingProblem() || (opOutput ? "" : "Please name the generated column.");
       if (problem) {
         setError(problem);
@@ -460,6 +488,8 @@ export default function NewJobPage() {
       ? aiResearchOperation(question, opInput, opOutput)
       : opKind === AI_WRITING
       ? aiWritingOperation(question, writingModel, opOutput)
+      : opKind === RESEARCH_WRITE
+      ? researchAndWriteOperation(question, writingModel, opOutput, headers)
       : {
           kind: opKind,
           input: { kind: 'source-field', field: opInput },
@@ -525,7 +555,9 @@ export default function NewJobPage() {
   };
   const modelById = (id: string) => generationModels.find(model => model.id === id);
   // Which column names a previewed answer: the company for research, the first mapped column for writing.
-  const previewLabelColumn = opKind === AI_WRITING
+  const previewLabelColumn = opKind === RESEARCH_WRITE
+    ? headers.find(h => mappings[h] === "company-name") ?? headers.find(h => mappings[h] === "website") ?? headers[0]
+    : opKind === AI_WRITING
     ? headers.find(h => mappings[h] && mappings[h] !== 'do-not-import') ?? headers[0]
     : opInput;
 
@@ -534,9 +566,10 @@ export default function NewJobPage() {
     .filter(([_, prop]) => prop !== 'do-not-import')
     .map(([sourceField, canonicalDataType]) => ({ sourceField, canonicalDataType }));
   const hasWebsiteColumn = Object.values(mappings).includes("website");
+  const hasCompanyColumn = hasWebsiteColumn || Object.values(mappings).includes("company-name");
 
   const handlePreview = async () => {
-    if (opKind === AI_WRITING) {
+    if (isWriting) {
       const problem = writingProblem();
       if (problem) {
         setError(problem);
@@ -564,7 +597,9 @@ export default function NewJobPage() {
         body: JSON.stringify({
           sourceList: { fileName, csv: `${csvLine(headers)}\n${selectedRows.map(csvLine).join("\n")}\n` },
           columnMappings: columnMappings(),
-          configuredOperations: [opKind === AI_WRITING
+          configuredOperations: [opKind === RESEARCH_WRITE
+            ? researchAndWriteOperation(question, writingModel, "answer", headers)
+            : opKind === AI_WRITING
             ? aiWritingOperation(question, writingModel, "answer")
             : aiResearchOperation(question, opInput, "answer")],
         }),
@@ -710,7 +745,7 @@ export default function NewJobPage() {
   // Saves the answers as a History entry named after the uploaded file; the question becomes the answer column.
   // A writing instruction is long and full of {Column}s, so its column uses the Generated Column name instead.
   const handleSavePreview = async () => {
-    const answerName = opKind === AI_WRITING ? (opOutput.trim() || "AI Writing") : question.trim();
+    const answerName = isWriting ? (opOutput.trim() || (opKind === RESEARCH_WRITE ? "Research & Write" : "AI Writing")) : question.trim();
     const answerField = headers.includes(answerName) ? `${answerName} (AI)` : answerName;
     const csv = [
       csvLine([...headers, answerField]),
@@ -741,7 +776,7 @@ export default function NewJobPage() {
     // A job without operations generates nothing; it would "complete" at once with 0/0 progress.
     if (operations.length === 0) {
       const pending = question.trim()
-        ? opKind === AI_WRITING
+        ? isWriting
           ? writingProblem() || (opOutput.trim() ? "" : "Please name the generated column.")
           : ""
         : "";
@@ -1032,6 +1067,7 @@ export default function NewJobPage() {
                        <option value={LEAD_LOOKUP}>Find Person / Company (LeadOcean)</option>
                        <option value={AI_RESEARCH}>AI Research (Google search)</option>
                        <option value={AI_WRITING}>AI Writing (from row data, e.g. ice breakers)</option>
+                       <option value={RESEARCH_WRITE}>Research &amp; Write (LeadOcean + web search, e.g. cold openers)</option>
                        <option value="clean-company-name">Clean Company Name</option>
                        <option value="clean-first-name">Clean First Name</option>
                        <option value="format-website">Format Website</option>
@@ -1039,6 +1075,17 @@ export default function NewJobPage() {
                        <option value="capitalize-job-titles">Capitalize Job Titles</option>
                     </select>
                   </div>
+                  {opKind === RESEARCH_WRITE && (
+                    <div className="text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-xl p-3">
+                      For each row this pulls the company&apos;s LeadOcean profile and searches the web for hiring, migration and leadership signals, then writes from your prompt.
+                      Placeholders that match a column, like <span className="font-semibold">{"{Company Name}"}</span>, are filled from the row; others, like <span className="font-semibold">{"{Signal}"}</span>, are filled from what was found.
+                    </div>
+                  )}
+                  {opKind === RESEARCH_WRITE && !hasCompanyColumn && (
+                    <div className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-xl p-3">
+                      No column is mapped to <span className="font-semibold">Website</span> or <span className="font-semibold">Company Name</span>. Go back to mapping and map one, so each row&apos;s company can be researched.
+                    </div>
+                  )}
                   {opKind === AI_RESEARCH && !hasWebsiteColumn && (
                     <div className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-xl p-3">
                       No column is mapped to <span className="font-semibold">Website</span>. Research works better with one: it tells companies with the same name apart and reuses earlier research about the same company.
@@ -1228,7 +1275,7 @@ export default function NewJobPage() {
                       )}
                     </div>
                   )}
-                  {opKind !== AI_WRITING && opKind !== LEAD_LOOKUP && (
+                  {!isWriting && opKind !== LEAD_LOOKUP && (
                   <div className="flex flex-col gap-2">
                     <label className="text-sm font-semibold text-gray-700">{opKind === AI_RESEARCH ? "Company Column" : "Input Column"}</label>
                     <select 
@@ -1244,17 +1291,19 @@ export default function NewJobPage() {
                   )}
                   {isAiOperation && (
                     <div className="flex flex-col gap-2">
-                      <label className="text-sm font-semibold text-gray-700">{opKind === AI_WRITING ? "What to write" : "Question"}</label>
+                      <label className="text-sm font-semibold text-gray-700">{opKind === RESEARCH_WRITE ? "Prompt" : opKind === AI_WRITING ? "What to write" : "Question"}</label>
                       <textarea
                         value={question}
                         onChange={e => { setQuestion(e.target.value); setPreviewAnswers([]); }}
-                        rows={opKind === AI_WRITING ? 4 : 2}
+                        rows={opKind === RESEARCH_WRITE ? 8 : opKind === AI_WRITING ? 4 : 2}
                         className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 outline-none focus:border-black focus:ring-1 focus:ring-black font-medium text-gray-900 resize-none"
-                        placeholder={opKind === AI_WRITING
+                        placeholder={opKind === RESEARCH_WRITE
+                          ? "Paste your prompt, e.g. Write the first line of a cold email to {Title} at {Company Name}, based on {Signal}."
+                          : opKind === AI_WRITING
                           ? "e.g. Write a one-sentence cold email ice breaker for {First Name}, {Job Title} at {Company Name}."
                           : "e.g. What was the last funding they got?"}
                       />
-                      {opKind === AI_WRITING && (
+                      {isWriting && (
                         <>
                           <div className="flex flex-wrap gap-1.5">
                             {headers.filter(h => mappings[h] && mappings[h] !== 'do-not-import').map(h => (
@@ -1274,7 +1323,8 @@ export default function NewJobPage() {
                           ) : (
                             <div className="flex flex-col gap-2">
                               {generationModels.map(model => {
-                                const perRow = estimatedWritingDollarsPerRow(model, question, headers, sampleRows);
+                                const perRow = estimatedWritingDollarsPerRow(model, question, headers, sampleRows, opKind === RESEARCH_WRITE ? RESEARCH_CONTEXT_CHARACTERS : 0)
+                                  + (opKind === RESEARCH_WRITE ? RESEARCH_DOLLARS_PER_COMPANY : 0);
                                 const allRows = perRow * dataRowCount;
                                 return (
                                   <button
@@ -1294,7 +1344,10 @@ export default function NewJobPage() {
                                   </button>
                                 );
                               })}
-                              <div className="text-xs text-gray-400">Estimates from OpenAI list prices; real cost depends on answer length.</div>
+                              <div className="text-xs text-gray-400">
+                                Estimates from OpenAI list prices; real cost depends on answer length.
+                                {opKind === RESEARCH_WRITE && " Includes about $0.0013 of web research per company; repeated companies and free searches cost less."}
+                              </div>
                             </div>
                           )}
                         </>
@@ -1306,8 +1359,8 @@ export default function NewJobPage() {
                         className="flex items-center justify-center gap-2 border border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100 rounded-xl py-2 text-sm font-semibold transition-colors disabled:opacity-50"
                       >
                         {previewing ? (
-                          <><div className="w-3.5 h-3.5 border-2 border-violet-300 border-t-violet-700 rounded-full animate-spin"></div>{opKind === AI_WRITING ? "Writing..." : "Researching..."}</>
-                        ) : opKind === AI_WRITING ? (
+                          <><div className="w-3.5 h-3.5 border-2 border-violet-300 border-t-violet-700 rounded-full animate-spin"></div>{opKind === AI_RESEARCH ? "Researching..." : opKind === RESEARCH_WRITE ? "Researching and writing..." : "Writing..."}</>
+                        ) : isWriting ? (
                           <><Sparkles className="w-4 h-4" />{selectedRows.length > 1 ? `Write for selected ${selectedRows.length} rows` : "Write for selected row"}</>
                         ) : (
                           <><Sparkles className="w-4 h-4" />{selectedRows.length > 1 ? `Ask on selected ${selectedRows.length} rows` : "Ask on selected row"}</>
@@ -1359,7 +1412,7 @@ export default function NewJobPage() {
                       value={opOutput}
                       onChange={e => setOpOutput(e.target.value)}
                       className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 outline-none focus:border-black focus:ring-1 focus:ring-black font-medium text-gray-900" 
-                      placeholder={opKind === AI_WRITING ? "e.g. Ice Breaker" : "e.g. Cleaned Name"}
+                      placeholder={opKind === RESEARCH_WRITE ? "e.g. Opener" : opKind === AI_WRITING ? "e.g. Ice Breaker" : "e.g. Cleaned Name"}
                     />
                   </div>
                   )}
@@ -1383,7 +1436,10 @@ export default function NewJobPage() {
                     {operations.map((op, i) => (
                        <div key={i} className="text-sm bg-white border border-gray-200 p-3 rounded-xl flex justify-between items-start shadow-sm group">
                           <div className="flex flex-col gap-1 pr-2">
-                            <span className="font-bold text-gray-900">{op.kind === "custom-operation" ? op.name : op.kind.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</span>
+                            <span className="font-bold text-gray-900">{op.kind === "custom-operation" ? op.name : op.kind === RESEARCH_WRITE ? "Research & Write" : op.kind.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</span>
+                            {op.kind === RESEARCH_WRITE && (
+                              <span className="text-gray-600 text-xs line-clamp-3">{op.promptTemplate}</span>
+                            )}
                             {op.kind === "custom-operation" && (
                               <span className="text-gray-600 text-xs">{op.generationModel ? op.promptTemplate : op.promptTemplate.split("\nQuestion: ")[1]}</span>
                             )}
@@ -1393,7 +1449,7 @@ export default function NewJobPage() {
                               </span>
                             )}
                             <span className="text-gray-500 text-xs flex flex-wrap gap-1 items-center">
-                              {(op.kind === "custom-operation" ? op.inputBindings.map((binding: any) => binding.input.field) : [op.input.field]).map((field: string) => (
+                              {(op.kind === "custom-operation" || op.kind === RESEARCH_WRITE ? op.inputBindings.map((binding: any) => binding.input.field) : [op.input.field]).map((field: string) => (
                                 <span key={field} className="bg-gray-100 px-1.5 py-0.5 rounded">{field}</span>
                               ))}
                               <ArrowRight className="w-3 h-3 text-gray-400" /> 
@@ -1432,7 +1488,11 @@ export default function NewJobPage() {
                       .filter(op => op.generationModel)
                       .reduce((total, op) => {
                         const model = modelById(op.generationModel);
-                        return model ? total + estimatedWritingDollarsPerRow(model, op.promptTemplate, headers, sampleRows) * dataRowCount : total;
+                        const research = op.kind === RESEARCH_WRITE;
+                        return model
+                          ? total + (estimatedWritingDollarsPerRow(model, op.promptTemplate, headers, sampleRows, research ? RESEARCH_CONTEXT_CHARACTERS : 0)
+                            + (research ? RESEARCH_DOLLARS_PER_COMPANY : 0)) * dataRowCount
+                          : total;
                       }, 0);
                     return (
                       <p className="text-xs text-gray-500 mb-3">
