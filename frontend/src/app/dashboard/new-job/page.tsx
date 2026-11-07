@@ -525,6 +525,20 @@ export default function NewJobPage() {
     setPreviewAnswers([]);
   };
 
+  // Quick select: ticks N rows in table order, starting at the first ticked row (or the first row).
+  // Shown only while the selection is still exactly that quick pick; ticking rows by hand clears it.
+  const [quickRows, setQuickRows] = useState(0);
+  const quickRowsShown = quickRows > 0 && selected.size === quickRows ? quickRows : 0;
+  const quickSelectRows = (count: number) => {
+    setQuickRows(count);
+    if (count === 0) return;
+    const firstTicked = selectedIndexes[0] ?? filteredIndexes[0] ?? 0;
+    const startAt = filteredIndexes.findIndex(index => index >= firstTicked);
+    const picked = filteredIndexes.slice(Math.max(0, startAt), Math.max(0, startAt) + count);
+    changeSelection(new Set(picked));
+    if (picked.length > 0) setTablePage(Math.floor(filteredIndexes.indexOf(picked[0]) / ROWS_PER_PAGE));
+  };
+
   // Shift-click ticks every shown row between the last clicked row and this one.
   const toggleRow = (rIdx: number, shiftKey: boolean) => {
     const next = new Set(selected);
@@ -1339,6 +1353,21 @@ export default function NewJobPage() {
                           ? "e.g. Write a one-sentence cold email ice breaker for {First Name}, {Job Title} at {Company Name}."
                           : "e.g. What was the last funding they got?"}
                       />
+                      <label className="text-sm font-semibold text-gray-700 mt-2" htmlFor="quick-rows">Rows to run on</label>
+                      <select
+                        id="quick-rows"
+                        value={quickRowsShown}
+                        onChange={e => quickSelectRows(Number(e.target.value))}
+                        className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 outline-none focus:border-black focus:ring-1 focus:ring-black font-medium text-gray-900"
+                      >
+                        <option value={0}>{selected.size > 0 ? `My selection (${selected.size.toLocaleString()} rows)` : `All rows (${allData.length.toLocaleString()})`}</option>
+                        {[5, 10, 20].map(count => (
+                          <option key={count} value={count}>{count} rows{selectedIndexes.length > 0 ? ` from row ${selectedIndexes[0] + 1}` : ""}</option>
+                        ))}
+                      </select>
+                      <div className="text-xs text-gray-500">
+                        Picks that many rows in table order, starting at the first ticked row. Preview takes up to {MAX_PREVIEW_ROWS}; Start Processing runs any number.
+                      </div>
                       {isWriting && (
                         <>
                           <div className="flex flex-wrap gap-1.5">
