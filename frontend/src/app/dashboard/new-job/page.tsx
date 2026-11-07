@@ -1411,12 +1411,12 @@ export default function NewJobPage() {
                               onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); applyCustomRows(); } }}
                               aria-label="Custom rows"
                               placeholder="e.g. 1-10, 15, 30-39"
-                              className="flex-1 bg-white border border-gray-200 rounded-xl py-2 px-3 outline-none focus:border-black focus:ring-1 focus:ring-black font-medium text-gray-900"
+                              className="flex-1 min-w-0 bg-white border border-gray-200 rounded-xl py-2 px-3 outline-none focus:border-black focus:ring-1 focus:ring-black font-medium text-gray-900"
                             />
                             <button
                               type="button"
                               onClick={applyCustomRows}
-                              className="bg-black hover:bg-gray-800 text-white rounded-xl px-4 text-sm font-semibold transition-colors"
+                              className="shrink-0 whitespace-nowrap bg-black hover:bg-gray-800 text-white rounded-xl px-4 text-sm font-semibold transition-colors"
                             >
                               Select rows
                             </button>
